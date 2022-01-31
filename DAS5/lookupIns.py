@@ -4,8 +4,6 @@ Modifed on Fri Feb 28 22:35:14 2020
 @author: Thennan
 
 """
-
-
 import urllib.request
 import shutil
 import pandas as pd
@@ -21,6 +19,9 @@ import json
 credsFile = path.join('..','creds.json')
 with open(credsFile,'r') as credsFile:
     creds = json.load(credsFile)
+mysqlHost = creds['mysqlHost']
+mysqlUser = creds['mysqlUser']
+mysqlPass = creds['mysqlPass']
 
 oneDay = tDelta(days=1)
 oneWeek = tDelta(days=7)
@@ -203,7 +204,7 @@ def lookup():
         #Instrumnet_Token_List 
         indicInst.drop('tradingsymbol',axis=1).to_csv(path.join('lookup_tables','indexTokenList.csv'),index=False)
 		
-        conn = MySQLdb.connect(host = 'localhost', user = 'thennan', passwd = 'turing15', port = 3307)
+        conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass)
         conn.autocommit(True)
         c = conn.cursor()
         
