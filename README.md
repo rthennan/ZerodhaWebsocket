@@ -26,8 +26,7 @@ Acquire and store tick data for NSE (India) stocks, Index Futures and Index Opti
 **I have split the data acquisition into two sub-parts:**
 1. DAS5 - NIFTY, BANKNIFTY, their current month futures and all NIFTY 500 stocks.
 2. DAS6 - Weekly Options for Nifty and BankNifty.  
-Zerodha's websocket allows subscribing to a maximum of 200 instruments per connection and a maximum of 3 connections are allowed per 'API App'(in other words, one subscription).  So DAS5 and DAS6 each use a separata set of api keys, secrets, request codes and accesscodes.  
-More details in the corresponding folder's readme files.
+Zerodha's websocket allows subscribing to a maximum of 200 instruments per connection and a maximum of 3 connections are allowed per 'API App'(in other words, one subscription).  So I use two Zerodha API apps. DAS5 and DAS6 share these in some places.
   
 **The Process can be split into a few steps:**
 1. Shortlist the desired instruments. - Manually Provided for DAS5. Even this piece is autmated in DAS6.
