@@ -1,4 +1,4 @@
-## **Sequence of DAS5 codes**:
+## **Sequence to run DAS5 scripts**:
 1. accessTokenReq.py
 2. accessTokenReqDAS6.py
 3. DAS5_MasterV1.py
