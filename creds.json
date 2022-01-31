@@ -11,5 +11,5 @@
 "apisec2" : "Zerodha-Kite-API-Sec2",
 "mysqlHost" : "MySQL-Host-IP-Address",
 "mysqlUser" : "MySQL-user-name",
-"mySQLPass" : "MySQL-password"
+"mysqlPass" : "MySQL-password"
 }
