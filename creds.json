@@ -2,7 +2,7 @@
 "destinationEmailAddress" : "destination-Email-Address",
 "senderEmailAddress" : "senderEmail",
 "senderEmailPass" : "sender-Email-Password",
-"TOTP" : "TOTP-Secret-Key",
+"TOTP" : "TOTP-Secret-Key. Enter your 2FA Pin here if you haven't enabled TOTP yet",
 "apiKey1" : "Zerodha-Kite-API-Key1",
 "apisec1" : "Zerodha-Kite-API-Sec1",
 "apiKey2" : "Zerodha-Kite-API-Key2",
