@@ -42,7 +42,7 @@ Zerodha's websocket allows subscribing to a maximum of 200 instruments per conne
   - Data in the daily tables will be minimal, allowing the cleanup to be faster and focused to just one date.
 
 Steps 1 and 2 - lookupIns.py (LookUp Instrument) for DAS5. DAS6 uses a different approach.
-Step 3 - accessTokenReq.py  and accessTokenReqDAS7 
+Step 3 - accessTokenReq.py  and accessTokenReqDAS6 
 Steps 4 to 8 - slightly different between DAS5 and DAS6
   
 **Yearly Activity:**  
@@ -75,7 +75,7 @@ Check DAS6's readme to know more.
 ![image](https://user-images.githubusercontent.com/38931343/151722312-6de3b807-8ab2-4bba-98a7-7ef9e4395996.png)
   - Startup Notify - Sends me an email when the machine powers On
   - holCheck - Shuts the instance down if today is a trading holiday
-  - das5AccessToken - Runs accessTokenReq.py and accessTokenReqDAS7.py to fetch the access tokens
+  - das5AccessToken - Runs accessTokenReq.py and accessTokenReqDAS6.py to fetch the access tokens
   - das5TMuxAuto - Starts DAS5/DAS5_MasterV1.py
   - das6TMuxAuto - Starts DAS6/DAS6_MasterV1.py 
   - dbSizeCheck - Checks disk utilization and DB growth size and notifies me by email.(code not included in here)
