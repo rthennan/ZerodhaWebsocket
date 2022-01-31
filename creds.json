@@ -3,7 +3,7 @@
 "senderEmailAddress" : "senderEmail",
 "senderEmailPass" : "sender-Email-Password",
 "TOTP" : "TOTP-Secret-Key",
-"ZerodhaLoginName" : "LoginName",
+"ZerodhaLoginName" : "LoginName/ClientCode",
 "ZerodhaPass" : "ZerodhaPass",
 "apiKey1" : "Zerodha-Kite-API-Key1",
 "apisec1" : "Zerodha-Kite-API-Sec1",
