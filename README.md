@@ -91,5 +91,9 @@ The only part of this project other than the yearly activity that is still being
 This has to be done cause AWS EBS is expensive compared to localstorage (duh!) and I do this roughly once a month. 
 Though I have automated parts of this process (dump in AWS, SCP from Local, import in local), it has to be trigerred manually as the local machine and the AWS instance might not be running at the same time.
 
-Feel free to [contact me](https://www.linkedin.com/in/rthennan) for questions if any.
+I started this project with hopes of building a trading bot.  
+Specifically, the least recommended approach - Intraday Trading on Naked Index Options for Nifty and BankNifty.
+The attempts failed of course. More details on the Failed Approach can be found in the [timeSeriesFail](https://github.com/rthennan/timeSeriesFail) Repo.
+
+Feel free to [contact me](https://www.linkedin.com/in/rthennan) for questions if any. 
 
