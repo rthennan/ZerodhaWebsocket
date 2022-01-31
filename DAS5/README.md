@@ -35,7 +35,7 @@ accessTokenReq and accessTokenReqDAS6 are independent and can be run at the same
 
 ## **Explanation for DAS5_Master's individual steps:**  
 ### **lookupIns.py**
-- Downloads the latest list of instrument_token along with ticker symbols from https://api.kite.trade/instruments.
+- Downloads the latest list of instrument_token along with ticker symbols from https://api.kite.trade/instruments and stores it in the lookup_tables folder.
 - Updates Nifty and BankNifty Futures instrument names if applicable (last Thursday stuff mentioned above).
 - Checks the instrument list I have manually provided in the below files in the lookup_tables folder:
   - instrumentsLookup.xlsx (Nifty 50, Nifty and BankNifty Index and their current month futures)
