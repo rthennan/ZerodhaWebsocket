@@ -10,7 +10,9 @@ The access token, along with the API Key and secret will be required for establi
 accessTokenReq and accessTokenReqDAS6 and do the same job, but for different apps (API key, secret and access token).  
 I had split them into two cause I felt selenium might misbehave if I try to open two windows from the same code. Not to mention the need to time it properly.  
 It is to be noted that I am using Selenium in headless mode here.  
-accessTokenReq and accessTokenReqDAS6 are independent and can be run at the same time.
+accessTokenReq and accessTokenReqDAS6 are independent and can be run at the same time.  
+  
+I have uploaded a [YouTube video](https://www.youtube.com/watch?v=0A-bnJRNJQk) demoing the accessToken automation in Windows.  
 
 ### **Symbol Name to Table mapping**
 - Index Futures also have a naming convention. BANKNIFTY22JANFUT, for example, is the BankNifty Futures instrument for January 2022.
