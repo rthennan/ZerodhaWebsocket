@@ -2,6 +2,14 @@ from datetime import datetime as dt
 import datetime
 import time
 from sendMailV1 import mailer as mail
+from os import path, makedirs
+import json
+
+credsFile = path.join('..','creds.json')
+with open(credsFile,'r') as credsFile:
+    creds = json.load(credsFile)
+
+destinationEmailAddress = creds['destinationEmailAddress']
 
 def log(txt):
 	import os
@@ -14,7 +22,7 @@ def log(txt):
 		f.write(logMsg)
 
 def mailBad(msg):
-    mail('burnnxx1@gmail.com','DAS5 - '+msg,msg+ ' '+str(datetime.datetime.now()))
+    mail(destinationEmailAddress,'DAS5 - '+msg,msg+ ' '+str(datetime.datetime.now()))
     
 def remain(h,m):
     stopTime = (dt.now()).replace(hour=h, minute=m, second=0, microsecond=0)
