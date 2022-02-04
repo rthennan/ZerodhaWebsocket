@@ -43,7 +43,7 @@ def backUpNFOFULL():
                 failedTables = failedTables +1
 
         if failedTables > 0:
-            mail("burnnxx1@gmail.com","DAS6 - backUpNFOFULL failed", "backUpBNFOFULL failed for " + str(failedTables)+" Tables. Check "+ str(datetime.date.today())+"_backupNFO.log for details")
+            mail(destinationEmailAddress,"DAS6 - backUpNFOFULL failed", "backUpBNFOFULL failed for " + str(failedTables)+" Tables. Check "+ str(datetime.date.today())+"_backupNFO.log for details")
         c.close()
         conn.close()
         msg = "DAS6 - NFO Backup and Truncate successfull"
@@ -52,6 +52,6 @@ def backUpNFOFULL():
     except Exception as e:
         msg = "DAS6 - backUpNFOFULL - Backup and Truncate Couldn't be completed. Reason: "+str(e)
         log(msg)
-        mail("burnnxx1@gmail.com","DAS6 - backUpBNFOFULL Failed",msg)
+        mail(destinationEmailAddress,"DAS6 - backUpBNFOFULL Failed",msg)
         return False
         
