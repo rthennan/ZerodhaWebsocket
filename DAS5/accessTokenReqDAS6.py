@@ -100,10 +100,12 @@ try:
             log('otpchanger '+str(datetime.datetime.now().second))
             time.sleep(1)
             #Enter TOTP
-        driver.find_element_by_xpath('//*[@id="container"]/div/div/div[2]/form/div[2]/div/input').send_keys(totp.now())
+        driver.find_element_by_xpath('//*[@id="container"]/div[1]/div/div/form/div[2]/input').send_keys(totp.now())
     else:
         #Enter Pin
-        driver.find_element_by_xpath('//*[@id="container"]/div/div/div[2]/form/div[2]/div/input').send_keys(TOTP_pin)
+        driver.find_element_by_xpath('//*[@id="container"]/div[1]/div/div/form/div[2]/input').send_keys(TOTP_pin) #Changed on 2022-09-26 
+    #Submit
+    driver.find_element_by_xpath('//*[@id="container"]/div[1]/div/div/form/div[3]/button').click() #Changed on 2022-09-25
     #Submit
     driver.find_element_by_xpath('//*[@id="container"]/div/div/div[2]/form/div[3]/button').click()
     #Wait for the 2FA Page to Load completely
