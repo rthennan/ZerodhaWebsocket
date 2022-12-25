@@ -2,7 +2,6 @@ import sys
 import os
 import multiprocessing
 import datetime
-from holidayChecker import holidayCheck #Moded for Linux
 from DAS6_NFOmainV1 import NFO #Moded for Linux
 from DAS6_BNFOmainV1 import BNFO #Moded for Linux
 from DASfailMsg import DASfail as fail #Moded for Linux
