@@ -4,7 +4,13 @@ Created on Sat Jan 25 17:24:59 2020
 
 @author: Thennan
 Assuming there are no trading holidays in the first two weeks of January
-Run this program with the expiryGenerator directory
+
+Updated on 2022-12-26
+tradeHolidays.xlsx is first read and the holidays in expanded date formats are convetred to yyyy-mm-dd format.
+In addition to geenrating the simmonslookup files, this will also produce tradingHolidays.csv  - A single list with the Dates in yyyy-mm-dd format.
+The same file is pushed to ../../tradeHoliday
+
+Run this program from the expiryGenerator directory
 Check https://kite.trade/forum/discussion/5574/change-in-format-of-weekly-options-instruments for the naming convention
 """
 import pandas as pd
@@ -12,13 +18,34 @@ import calendar
 from datetime import datetime as dt,timedelta as tdel
 from dateutil.relativedelta import relativedelta, TH
 from os import path
+import shutil
 
-holidaysFile = 'tradingHolidays.csv' #Needs be in the same folder. i.e Parent Folder of DAS6
 
-holidays = pd.read_csv(holidaysFile)['Date'].values.tolist()
+#To convert 'January 26, 2023' to '2023-01-26'
+def stringDateToNum(inStr):
+    return str(dt.strptime(inStr, '%B %d, %Y'))[:10]
+
+def datetime64ToString(inStr):
+    return dt.strptime(inStr, '%B %d, %Y')
+
+hols = pd.read_excel("tradeHolidays.xlsx")
+hols['Date'] = hols['Date'].apply(stringDateToNum)
+holidaysFilePath = path.join('..','..','tradeHoliday','tradingHolidays.csv') 
+#Pushes the file to ../../tradeHoliday for main holiday checker cronjob. 
+#Comment the below two lines if you don't want this.
+hols['Date'].to_csv(holidaysFilePath, index=False) 
+hols['Date'].to_csv('tradingHolidays.csv', index=False) #leaving a copy for reference in the local folder
+
+holidays = hols['Date'].values.tolist()
 #The table prefixes are based on the year for which the tradingHolidays have been provided.
 #The year is fetched from the first entry in the tradingHolidays list
 
+#Leaving a copy of the holiday list in original format in the tradeHolidays directory if needed
+holYear = holidays[0][:4]
+holFileName = f"tradeHolidays{holYear}.xlsx"
+#Leaving a copy of the holidays xlsx file in the  ../../tradeHoliday folder 
+#Comment the below two lines if you don't want this.
+shutil.copy('tradeHolidays.xlsx', path.join('..','..','tradeHoliday',holFileName))
 
 def strToDate(inDate2):
     return dt.strptime(str(inDate2), '%Y-%m-%d').date()
@@ -103,6 +130,10 @@ def expGenMain(indexNameIn):
     expLookup.to_csv(filePath,index = False) 
     return fileName
     
+#Backing up older files
+prevYear = str(int(holidays[0][:4])-1)
+shutil.copy(path.join('..','lookup_tables','nfo_simmonsLookup.csv'), path.join('..','lookup_tables',f'nfo_simmonsLookup_{prevYear}.csv'))
+shutil.copy(path.join('..','lookup_tables','bnfo_simmonsLookup.csv'), path.join('..','lookup_tables',f'bnfo_simmonsLookup_{prevYear}.csv'))
 
 niftyOptFile = expGenMain('NIFTY') #Generating the expiry suffix for Nifty
 BankNiftyOptFile = expGenMain('BANKNIFTY') #Generating the expiry suffix for BankNifty
