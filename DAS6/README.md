@@ -1,9 +1,11 @@
 ## **DAS6 - stores Weekly options tick data for NIFTY and BANKNIFTY**
 
 ## **Sequence to run DAS5 scripts**:
-1. Yearly activity - expiryGenerator\expSuffGenerator.py - Once a year, before the year begins.
-2. accessTokenReqDAS6.py (Skip this if you have already run it as a part of DAS5).
-3. DAS6_MasterV1.
+1. Yearly activity:  
+1.1 Update the NSE trading holidays for the year in [tradingHolidays.csv](https://github.com/rthennan/ZerodhaWebsocket/blob/main/DAS6/expiryGenerator/tradingHolidays.csv)  
+1.2 expiryGenerator\expSuffGenerator.py - Once a year, before the year begins.
+3. accessTokenReqDAS6.py (Skip this if you have already run it as a part of DAS5).
+4. DAS6_MasterV1.
 
 ## **expiryGenerator\expSuffGenerator.py:**  
 - To be run from the expSuffGenerator directory.
