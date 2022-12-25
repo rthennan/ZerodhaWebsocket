@@ -4,4 +4,4 @@
 4. Run expSuffGenerator.py. This will produce   - A single list with the Dates in yyyy-mm-dd format.  
 Use tradingHolidays_ref.csv for reference.  
 tradingHolidays.csv and a copy of tradeHoliday.xlsx suffixed with the year are then pushed to ../../tradeHoliday.  
-Comment the approrpriate lines of code if you don't want this file operation to be performed.
+Comment the appropriate lines of code if you don't want this file operation to be performed.
