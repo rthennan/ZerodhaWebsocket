@@ -9,11 +9,9 @@
 - To be run from the expSuffGenerator directory.
 - The Instrument names for NIFTY and BANKNIFTY weekly options have a naming convention as stated [here](https://kite.trade/forum/discussion/5574/change-in-format-of-weekly-options-instruments).
 - I was initially updating the table prefix names and the instrument list on a weekly basis, every Thursday.
-- Missing this activity meant I wouldn't get the Weekly options data until I update the current week's prefix.
-- Hence this automation.
-- The reason it has to be done weekly is cause the NSE trading holidays list for any year is provided just before the year begins.
-- And the instrument name prefix for a week could change if that week's Thursday is a trading holiday.
-- Hence I get the trading holidays list for the new year and complete the activity before the first trading day of the year.
+- Missing this activity meant I wouldn't get the Weekly options data until I update the current week's prefix. Hence this automation.
+- The reason it has to be done yearly and not just once is cause the NSE trading holidays list for any year is provided just before the year begins.  The instrument name prefix for a week could change if that week's Thursday is a trading holiday.
+- So I get the trading holidays list for the new year and complete the activity before the first trading day of the year.
 
 ## **accessTokenReqDAS6:**
 Refer the [Access Tokens section](https://github.com/rthennan/ZerodhaWebsocket/tree/main/DAS5#accesstoken---accesstokenreq-and-accesstokenreqdas6) in DAS5's Readme.
