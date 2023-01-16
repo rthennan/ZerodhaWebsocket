@@ -91,7 +91,7 @@ def DAS5_3_Ticker():
         conne = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, db='aws_tokens')
         conne.autocommit(True)
         ce = conne.cursor()
-        ce.execute('select accessToken from das7 order by time desc limit 1')
+        ce.execute('select accessToken from das6 order by time desc limit 1')
         acc_token = str(ce.fetchone()[0])
         ce.close()
         conne.close()    
