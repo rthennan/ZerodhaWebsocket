@@ -98,3 +98,5 @@ The attempts failed of course. More details on the Failed Approach can be found 
 
 Feel free to [contact me](https://www.linkedin.com/in/rthennan) for questions if any. 
 
+### **To Do:**   
+Reorganize names for DBs, tables, logs and access tokens. DAS<X> is inconsistent and all over the place.
