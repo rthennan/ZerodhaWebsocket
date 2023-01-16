@@ -149,9 +149,10 @@ for attempt in range(1,numbOfRetries+1):
 	    mail(destinationEmailAddress,msg,'DAS5: Access Token succeeded at '+str(datetime.datetime.now())+'\n Proceeding to Instrument List file lookup')
 
 	except Exception as e:
-		msg = 'DAS5 - Access token Failed. Attempt No :'+str(attempt)+' Exception-> ' + str(e)
+		msg = 'DAS5 - Access token Failed. Attempt No :'+str(attempt)+' Exception-> ' + str(e)+' Will retry after 30 seconds'
 		log(msg)
 		print(msg)
+		time.sleep(30)
 	else:
         	break
 else:
