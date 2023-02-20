@@ -65,7 +65,7 @@ while (datetime.now().replace(second=0, microsecond=0) < datetime.now().replace(
         printer(f"STALLED: {msg}")
         mail(destinationEmailAddress,f"DAS6 WatchDog {date.today()}:  DAS6 STALLED",msg)
     else:
-        msg = f'NFO and BNFO seem to be alive.\nTime since last entry in DAS6_NFO_FULL: {nfoLastEntry}.\nTime since last entry in DAS6_BNFO_FULL: {bnfoLastEntry}'
+        msg = f'NFO and BNFO seem to be alive.\nTime since last entry in DAS6_NFO_FULL: {nfoLastEntry} Seconds.\nTime since last entry in DAS6_BNFO_FULL: {bnfoLastEntry} Seconds.'
         log(msg)
         printer(msg)
     
