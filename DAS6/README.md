@@ -53,3 +53,7 @@ Refer the [Access Tokens section](https://github.com/rthennan/ZerodhaWebsocket/t
 ## **DAS6_backUpNFO_V1 and DAS6_backUpBNFO_V1:**
 - Backup 'Daily' tables to the main database.
 
+### **DAS6_WatchDog:**  
+- Nifty and BankNifty options are reconnected every 5 minutes to get a range of Option chains close to the index's current price. 
+- This watchdog checks if the connections were re-established successfully.
+- Not integrated with the main DAS trheads (on purpose) and has to be run separately. 
