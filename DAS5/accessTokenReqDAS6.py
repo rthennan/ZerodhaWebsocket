@@ -105,7 +105,7 @@ for attempt in range(1,numbOfRetries+1):
             driver.find_element_by_xpath('//*[@id="container"]/div[1]/div/div/form/div[2]/input').send_keys(totp.now())
 	    else:
             #Enter Pin
-            driver.find_element_by_xpath('//*[@id="container"]/div[1]/div/div/form/div[2]/input').send_keys(TOTP_pin) #Changed on 2022-09-26 
+            driver.find_element_by_xpath('//*[@id="container"]/div[2]/div/div[2]/form/div[1]/input').send_keys(TOTP_pin) #Changed on 2022-09-26 
 	    #Wait for the 2FA Page to Load completely
 	    print("DAS6 - Pin entered and submitted.")
 	    time.sleep(10)
