@@ -1,19 +1,11 @@
 ## **DAS6 - stores Weekly options tick data for NIFTY and BANKNIFTY**
 
 ## **Sequence to run DAS5 scripts**:
-1. Yearly activity:  
+1. Yearly activity: (Within the first week of the year)
 1.1 Update the NSE trading holidays for the year in [tradingHolidays.csv](https://github.com/rthennan/ZerodhaWebsocket/blob/main/DAS6/expiryGenerator/tradingHolidays.csv)  
-1.2 expiryGenerator\expSuffGenerator.py - Once a year, before the year begins.
-3. accessTokenReqDAS6.py (Skip this if you have already run it as a part of DAS5).
+1.2 place tradingHolidays.csv in ..\tradeHoliday\tradingHolidays.csv , relative to DAS6. A CSV file with just the list of tradeholidays in YYYY-MM-DD format.
+3. accessTokenReqDAS6.py (Skip this if you have already run it as a part of DAS5). Daily
 4. DAS6_MasterV1.
-
-## **expiryGenerator\expSuffGenerator.py:**  
-- To be run from the expSuffGenerator directory.
-- The Instrument names for NIFTY and BANKNIFTY weekly options have a naming convention as stated [here](https://kite.trade/forum/discussion/5574/change-in-format-of-weekly-options-instruments).
-- I was initially updating the table prefix names and the instrument list on a weekly basis, every Thursday.
-- Missing this activity meant I wouldn't get the Weekly options data until I update the current week's prefix. Hence this automation.
-- The reason it has to be done yearly and not just once is cause the NSE trading holidays list for any year is provided just before the year begins.  The instrument name prefix for a week could change if that week's Thursday is a trading holiday.
-- So I get the trading holidays list for the new year and complete the activity before the first trading day of the year.
 
 ## **accessTokenReqDAS6:**
 Refer the [Access Tokens section](https://github.com/rthennan/ZerodhaWebsocket/tree/main/DAS5#accesstoken---accesstokenreq-and-accesstokenreqdas6) in DAS5's Readme.
