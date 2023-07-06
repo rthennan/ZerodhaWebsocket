@@ -54,8 +54,7 @@ Steps 4 to 8 - slightly different between DAS5 and DAS6
   
 ### **Yearly Activity:**  
 - Update the NSE trading holidays for the year in [tradingHolidays.csv](https://github.com/rthennan/ZerodhaWebsocket/blob/main/DAS6/expiryGenerator/tradingHolidays.csv)  
-- DAS6 collects tick data for Nifty and BankNifty weekly options, for the current and next week's expiry.
-\DAS6\expiryGenerator\expSuffGenerator.py has to be run before the beginning of every year, for generating that year's weekly expire prefixes.  
+- This is requierd to generate the expiry prefixes for the Nifty and Banknifty option instruments
 Check DAS6's readme to know more.
   
 ### **Notes:**
