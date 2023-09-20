@@ -9,7 +9,7 @@ from kiteconnect import KiteConnect
 import traceback
 from DAS6_NFO_Full_V1 import NFO_FULL #Moded for Linux
 from sendMailV1 import mailer as mail #Moded for Linux
-from getExpiryPrefix import getExpPref
+from getExpiryPrefix import getExpPrefNifty
 from dateutil.relativedelta import relativedelta
 import json
 from os import path, makedirs
@@ -54,9 +54,9 @@ def NFOlookup():
             #currExpiry = simmonsLookup.loc[simmonsLookup['date'] == pd.Timestamp("today").strftime("%Y-%m-%d")]['currExpiry'].iloc[0]
             #nextExpiry = simmonsLookup.loc[simmonsLookup['date'] == pd.Timestamp("today").strftime("%Y-%m-%d")]['nextExpiry'].iloc[0]
             #Generating the expiry prefixes on the fly now.
-            currExpiry = getExpPref('NIFTY',dt.today().date())
+            currExpiry = getExpPrefNifty(dt.today().date())
             #Add 1 week to the current date and find its expiry, to get the next expiry  
-            nextExpiry = getExpPref('NIFTY',dt.today().date()+ relativedelta(weeks=1))             
+            nextExpiry = getExpPrefNifty(dt.today().date()+ relativedelta(weeks=1))             
             
             """Using DAS5 App"""
             kite = KiteConnect(api_key=apiKey1)    		
