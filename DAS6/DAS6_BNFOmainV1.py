@@ -10,7 +10,7 @@ import traceback
 from DAS6_BNFO_Full_V1 import BNFO_FULL #Moded for Linux
 from sendMailV1 import mailer as mail #Moded for Linux
 from os import path, makedirs
-from getExpiryPrefix import getExpPref
+from getExpiryPrefix import getExpPrefBankNifty
 from dateutil.relativedelta import relativedelta
 import json
 
@@ -54,9 +54,9 @@ def BNFOlookup():
             #currExpiry = simmonsLookup.loc[simmonsLookup['date'] == pd.Timestamp("today").strftime("%Y-%m-%d")]['currExpiry'].iloc[0]
             #nextExpiry = simmonsLookup.loc[simmonsLookup['date'] == pd.Timestamp("today").strftime("%Y-%m-%d")]['nextExpiry'].iloc[0]
             #Generating the expiry prefixes on the fly now.
-            currExpiry = getExpPref('BANKNIFTY',dt.today().date())
+            currExpiry = getExpPrefBankNifty(dt.today().date())
             #Add 1 week to the current date and find its expiry, to get the next expiry  
-            nextExpiry = getExpPref('BANKNIFTY',dt.today().date()+ relativedelta(weeks=1)) 
+            nextExpiry = getExpPrefBankNifty(dt.today().date()+ relativedelta(weeks=1)) 
             
             """Using DAS5 App"""
             kite = KiteConnect(api_key=apiKey1)
