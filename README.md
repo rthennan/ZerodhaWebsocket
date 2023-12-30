@@ -46,20 +46,30 @@ Acquire and store tick data for NSE (India) stocks, Index Futures and Index Opti
  7. Stop the connection at 15:35 IST. (NSE markets close at 15:30 IST)
  8. Cleanup data from the Daily tables , store the data into the master database and delete the Daily tables.
   - Maintaining a smaller 'Daily' tables improves the 'replace into' performance, compared to storing everything directly to a main database.
-  - Data in the daily tables will be minimal, allowing the cleanup to be faster and focused to just one date.
+  - Data in the daily tables will be minimal, allowing the cleanup to be faster and focused on just one date.
 
 Steps 1 and 2 - lookupIns.py (LookUp Instrument) for DAS5. DAS6 uses a different approach.
 Step 3 - accessTokenReq.py  and accessTokenReqDAS6 
 Steps 4 to 8 - slightly different between DAS5 and DAS6
   
-### **Yearly Activity:**  
-- Update the NSE trading holidays for the year in [tradingHolidays.csv](https://github.com/rthennan/ZerodhaWebsocket/blob/main/DAS6/expiryGenerator/tradingHolidays.csv)  
-- This is requierd to generate the expiry prefixes for the Nifty and Banknifty option instruments
-Check DAS6's readme to know more.
+### **Yearly Activity - Update NSE holidays list :**  
+1. Download NSE holidays with at least the 'Date' field and save it as tradeHolidays.xlsx
+2. Ensure the date column is titled 'Date'. Dates are expected to be in the format '%B %d, %Y' .
+Example - 'January 26, 2023'
+3. Upload it to DAS6/lookup_tables
+4. cd ~/DAS6
+5. python generateTradeHolidays.py  
+
+or  
+
+1. Create a CSV called 'tradingHolidays.csv'
+2. NSE Holiday dates alone in 'yyyy-mm-dd' format
+3. 'Date' as the header
+4. Place it in the main 'tradeHoliday' directory
   
 ### **Notes:**
 - I was initially running this from a local Windows machine. But that failed a few days due to power outages and internet issues. 
-  So I moved the code to an AWS instance running Ubuntu. As a positive side effective, I had to migrate the windows specific parts of the code to be more generic.
+  So, I moved the code to an AWS instance running Ubuntu. As a positive side effect, I had to migrate the Windows-specific parts of the code to be more generic.
   Hence the program will run on both Windows and Linux (can't comment on Mac), as long as the pre-requisities mentioned ealier are met.
 - My Python skills were quite basic when I started this project.
 - My skills improved over time and I started writing better code (I think??) and automated the tasks one by one.
@@ -87,9 +97,9 @@ Check DAS6's readme to know more.
   - das6TMuxAuto - Starts DAS6/DAS6_MasterV1.py 
   - dbSizeCheck - Checks disk utilization and DB growth size and notifies me by email.(code not included in here)
 
-The only part of this project other than the yearly activity that is still being done manually, is exporting the database from AWS and importing it to my local machine.  
-This has to be done cause AWS EBS is expensive compared to localstorage (duh!) and I do this roughly once a month. 
-Though I have automated parts of this process (dump in AWS, SCP from Local, import in local), it has to be trigerred manually as the local machine and the AWS instance might not be running at the same time.
+The only part of this project, other than the yearly activity still being done manually, is exporting the database from AWS and importing it to my local machine.  
+This has to be done cause AWS EBS is expensive compared to local storage (duh!), and I do this roughly once a month. 
+Though I have automated parts of this process (dump in AWS, SCP from Local, import in local), it has to be triggered manually as the local machine and the AWS instance might not be running at the same time.
 
 I started this project with hopes of building a trading bot.  
 Specifically, the least recommended approach - Intraday Trading on Naked Index Options for Nifty and BankNifty.
