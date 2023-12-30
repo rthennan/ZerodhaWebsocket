@@ -24,7 +24,7 @@ holidaysFilePath = path.join('..','tradeHoliday','tradingHolidays.csv')
 #Pushes the file to ../../tradeHoliday for main holiday checker cronjob. 
 #Comment the below two lines if you don't want this.
 hols['Date'].to_csv(holidaysFilePath, index=False) 
-hols['Date'].to_csv('tradingHolidays.csv', index=False) #leaving a copy for reference in the local folder
+hols['Date'].to_csv(path.join('lookup_tables','tradingHolidays.csv'), index=False) #leaving a copy for reference in the local folder
 
 holidays = hols['Date'].values.tolist()
 #The table prefixes are based on the year for which the tradingHolidays have been provided.
