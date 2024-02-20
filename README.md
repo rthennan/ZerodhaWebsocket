@@ -1,3 +1,18 @@
+# Critical update.
+============================  
+Zerodha's websocket limit has been increased to 3000 instruments per connection, and a Single API key can have up to 3 web socket connections.  
+Unsure when this limit was increased (or maybe I misread it from the beginning)
+Data acquisition for this project can be done with just one API key.  
+- One connection for Nifty 500 + Nifty and BankNifty Index and Futures (3 months)
+- One connection for Nifty Options
+- One connection for BankNifty options.
+  
+I plan to revamp the project around April 2024 for this change, encapsulating and isolating these three major tasks as much as possible.  
+Feel free to use it as is meanwhile.
+
+============================
+
+
 # Zerodha Websocket
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
   
