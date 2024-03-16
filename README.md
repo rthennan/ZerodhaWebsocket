@@ -92,7 +92,7 @@ or
 - I haven't bothered refactoring or improving the code much cause <img src="https://c.tenor.com/fJAoBHWymY4AAAAC/do-not-touch-it-programmer.gif" alt="If the code works, don't touch it" style="height: 200px; width:200px;"/>
   
 ### **Automation I use outside the provided code:**
-- I run the whole thing in an AWS EC2 machine (c6a.xlarge)
+- I run the whole thing in an AWS EC2 machine (~~m5.large~~ c6a.xlarge)
 - I've setup an AWS Lambda function (EventBridge - CloudWatch Events) to start the machine every weekday at 08:30 IST .
   - Instead of running the Python code directly, I have wrapped them inside bash scripts that perform the following:
   - Change directories if needed
