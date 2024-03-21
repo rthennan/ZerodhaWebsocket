@@ -1,5 +1,5 @@
 {
-"destinationEmailAddress" : "destEmailAddress",
+"destinationEmailAddress" : "destEmail",
 "senderEmailAddress" : "senderEmail",
 "senderEmailPass" : "sender-Email-Password",
 "TOTP" : "TOTP-Secret-Key",
