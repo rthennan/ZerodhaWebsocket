@@ -1,95 +1,52 @@
-# Critical update.
-============================  
-Zerodha's websocket limit has been increased to 3000 instruments per connection, and a Single API key can have up to 3 web socket connections.  
-Unsure when this limit was increased (or maybe I misread it from the beginning)
-Data acquisition for this project can be done with just one API key.  
-- One connection for Nifty 500 + Nifty and BankNifty Index and Futures (3 months)
-- One connection for Nifty Options
-- One connection for BankNifty options.
-  
-I plan to revamp the project around April 2024 for this change, encapsulating and isolating these three major tasks as much as possible.  
-Feel free to use it as is meanwhile.
-
-============================
-
-
 # Zerodha Websocket
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
   
  ### **Pre-requisites:**
 - Active subscription for [Kite Connect API](https://developers.kite.trade/apps).
 - Python3 with packages listed under the tools section
-- MySQL / MariaDB
-- Zerodha, email and MySQL credentials have to be filled in creds.json file
-  - Storing passwords and keys in a plaintext file is a potential security issue.  But I can work with this cause the server that I am running the program from is quite secure and isn't open for any incoming connections. So please consider a different approach for credential store if you are running this code from a machine open for incoming connections.
-
+- MySQL / MariaDB Server
+- Zerodha, gmail and MySQL credentials have to be filled in dasConfig.json file
+  - Storing passwords and keys in a plaintext file is a potential security issue.
+  - This is used for simplicity. Please consider switching to a more secure secret management system in Production deployments
 ### **Tools primarily used:**
 - Python
   - Pandas - For handling CSV and Excel Files
-  - Selenium - Automate Authentication
+  - Selenium - Automate Kite Authentication and getHolidayList from NSE
   - MySQLdb
   - numpy - just for saving lists and dictionaries. Pickle could have been used
   - shutil - handling files
-  - smtplib - Mail notification
+  - smtplib - Mail notification using Gmail
   - pyotp - for generating TOTP requried for Zerodha authentication
   - json - for storing and accessing credentials, api keys, etc. (creds.json)
-- MariaDB
-- A few XLSX and CSV files to provide the shortlist manually and to keep a track of things.  
+- MariaDB /MySQL Server for storing tick data
 
+### Setup/Installation :
+- Install Python3
+- Install MySQL / MariaDB Server
+- MySQL Client
+-   For windows: https://stackoverflow.com/questions/34836570/how-do-i-install-and-use-mysqldb-for-python-3-on-windows-10
+-   For Linux  
+    `sudo apt-get update`  
+    `sudo apt-get install libmysqlclient-dev libmariadb-dev`  
+-   Install Google Chrome
+-     For Linux:
+      wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+      sudo dpkg -i google-chrome-stable_current_amd64.deb
+- Ensure you have installed the MySQL client packages at the OS level. Else pip install wil fail for mysqlclient
+- `pip install -r requirements.txt`
+
+### Update dasConfig.json:
+- Doc in Progress
+
+### To Execute:
+- Just run `python DAS_main.py`
+
+### Detailed Notes:
+- Doc in Progress
+  
   
 
-### **I have split the data acquisition into two sub-parts:**
-1. DAS5 - NIFTY, BANKNIFTY, their current month futures and all NIFTY 500 stocks.
-2. DAS6 - Weekly Options for Nifty and BankNifty.  
 
-### **API Key and API Sceret:**
-- Zerodha's websocket allows subscribing to a maximum of 200 instruments per connection and a maximum of 3 connections are allowed per 'API App'(in other words, one subscription).
-- 200 x 3 => 600 instruments max / API App.
-- So I use two Zerodha API apps. DAS5 and DAS6 share these in some places.
-- **DAS5_tickerV1 , DAS6_NFO_Full_V1 and DAS6_BNFO_Full_V1 - Use ApiKey1 and ApiSec1.**
-- **DAS5_2_tickerV1, DAS5_3_tickerV1 and DAS5_4_tickerV1 - Use ApiKey2 and ApiSec2.**
-- As you might use just part of thise code, please check and replace the ApiKey and ApiSecret placeholders
-  
-### **The Process can be split into a few steps:**
-1. Shortlist the desired instruments. - Manually Provided for DAS5. Even this piece is autmated in DAS6.
-2. Finalize the instrument_tokens (internal codes) for the desired instruments.
-3. Fetch the request token and access tokens for Zerodha Kite API. (Automated with Python + Selenium)
-4. Connect to [Zerodha's Websocket API](https://kite.trade/docs/connect/v3/websocket/), using the access Token fetched earlier and start receiving tick data.
-5. Subscribe to the shortlisted instrument_tokens in the Zerodha Kite's Websocket.
-6. Store the received tick data for each stock/index/option into its corresponding 'Daily' table.
-  - Since we might receive multiple ticks for the same second, I use the received tick's timestamp as the key and store the streaming data using 'REPLACE INTO' instead of just an insert.
- 7. Stop the connection at 15:35 IST. (NSE markets close at 15:30 IST)
- 8. Cleanup data from the Daily tables , store the data into the master database and delete the Daily tables.
-  - Maintaining a smaller 'Daily' tables improves the 'replace into' performance, compared to storing everything directly to a main database.
-  - Data in the daily tables will be minimal, allowing the cleanup to be faster and focused on just one date.
-
-Steps 1 and 2 - lookupIns.py (LookUp Instrument) for DAS5. DAS6 uses a different approach.
-Step 3 - accessTokenReq.py  and accessTokenReqDAS6 
-Steps 4 to 8 - slightly different between DAS5 and DAS6
-  
-### **Yearly Activity - Update NSE holidays list :**  
-1. Download NSE holidays with at least the 'Date' field and save it as tradeHolidays.xlsx
-2. Ensure the date column is titled 'Date'. Dates are expected to be in the format '%B %d, %Y' .
-Example - 'January 26, 2023'
-3. Upload it to DAS6/lookup_tables
-4. cd ~/DAS6
-5. python generateTradeHolidays.py  
-
-or  
-
-1. Create a CSV called 'tradingHolidays.csv'
-2. NSE Holiday dates alone in 'yyyy-mm-dd' format
-3. 'Date' as the header
-4. Place it in the main 'tradeHoliday' directory
-  
-### **Notes:**
-- I was initially running this from a local Windows machine. But that failed a few days due to power outages and internet issues. 
-  So, I moved the code to an AWS instance running Ubuntu. As a positive side effect, I had to migrate the Windows-specific parts of the code to be more generic.
-  Hence the program will run on both Windows and Linux (can't comment on Mac), as long as the pre-requisities mentioned ealier are met.
-- My Python skills were quite basic when I started this project.
-- My skills improved over time and I started writing better code (I think??) and automated the tasks one by one.
-- So you might see a combination of sub-par and decent code in here. 
-- I haven't bothered refactoring or improving the code much cause <img src="https://c.tenor.com/fJAoBHWymY4AAAAC/do-not-touch-it-programmer.gif" alt="If the code works, don't touch it" style="height: 200px; width:200px;"/>
   
 ### **Automation I use outside the provided code:**
 - I run the whole thing in an AWS EC2 machine (~~m5.large~~ c6a.xlarge)
