@@ -1,0 +1,13 @@
+{
+    "destinationEmailAddress" : "destinationEmailAddress",
+    "senderEmailAddress" : "senderEmailAddress",
+    "senderEmailPass" : "senderEmailPass",
+    "TOTP_seed" : "TOTP Seed",
+    "ZerodhaLoginName" : "ZerodhaClientName",
+    "ZerodhaPass" : "ZerodhaPass",
+    "apiKey" : "Zerodha-Kite-API-Key",
+    "apisec" : "Zerodha-Kite-API-Sec",
+    "mysqlHost" : "MySQL-Host-IP-Address",
+    "mysqlUser" : "MySQL-user-name",
+    "mysqlPass" : "MySQL-password"
+}
