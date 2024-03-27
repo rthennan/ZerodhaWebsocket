@@ -1,0 +1,20 @@
+{
+    "destinationEmailAddress" : "Your_destinationEmailAddress1,Your_destinationEmailAddress2",
+    "senderEmailAddress" : "Your_SenderEmailAddressATgmail.com",
+    "senderEmailPass" : "Your_SenderEmailPass",
+    "TOTP_seed" : "Your_TOTP_seed",
+    "ZerodhaLoginName" : "Your_ZerodhaLoginName",
+    "ZerodhaPass" : "Your_ZerodhaPass",
+    "apiKey" : "Your_Zerodha_apiKey",
+    "apisec" : "Your_Zerodha_apisec",
+    "mysqlHost" : "Your_mysqlHost",
+    "mysqlUser" : "Your_mysqlUser",
+    "mysqlPass" : "Your_mysqlPass",
+    "mysqlPort" : 3306,
+    "accessTokenDBName" : "zerodha_tokens",
+    "nifty500DBName" : "aws_das_nse",
+    "niftyOptionsDBName" : "aws_das_niftyopt",
+    "bankNiftyOptionsDBName" : "aws_das_bankopt",
+    "marketCloseHour" : 15,
+    "marketCloseMinute" : 35
+}
