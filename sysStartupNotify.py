@@ -1,7 +1,6 @@
 """
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
-LinkedIn: https://www.linkedin.com/in/rthennan
 
 Send an email stating the machine has started.
 Added as a cronjob to run on startup: @reboot /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py

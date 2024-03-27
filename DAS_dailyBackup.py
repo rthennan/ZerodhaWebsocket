@@ -2,7 +2,6 @@
 """
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
-LinkedIn: https://www.linkedin.com/in/rthennan
 
 Dumps the tables from the 'Daily' databases to a backup database.
 1. Maintaines efficiency of replace statements in daily tables as they would have one day's data at most 

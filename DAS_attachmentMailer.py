@@ -1,3 +1,8 @@
+"""
+Author: Rajesh Thennan
+Source: https://github.com/rthennan/ZerodhaWebsocket
+"""
+
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase

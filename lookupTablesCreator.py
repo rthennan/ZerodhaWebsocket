@@ -1,7 +1,6 @@
 """
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
-LinkedIn: https://www.linkedin.com/in/rthennan
 
 Downloads Instrument List from Zerodha
 Lists the exchange tokens to be subscribed, based on the lookup table Generated / Updated by nifty500Updater

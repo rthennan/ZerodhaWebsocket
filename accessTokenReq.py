@@ -1,7 +1,6 @@
 """
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
-LinkedIn: https://www.linkedin.com/in/rthennan
 
 Install Chrome in Linux 
 wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb

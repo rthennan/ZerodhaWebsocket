@@ -1,7 +1,6 @@
 """
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
-LinkedIn: https://www.linkedin.com/in/rthennan
 
 getHolidayListFromNSE based on https://github.com/tahseenjamal/nse_holidays
 

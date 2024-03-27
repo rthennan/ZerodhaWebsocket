@@ -1,7 +1,6 @@
 """
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
-LinkedIn: https://www.linkedin.com/in/rthennan
 
 This is just a countdown timer that runs in parallel with the ticker.
 When this script is over, the actual ticker is killed and backup operations are called
