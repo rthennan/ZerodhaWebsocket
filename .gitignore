@@ -1,6 +1,5 @@
 *.log
 tradingHolidays.csv
-dasConfig.json
 *.pyc
 /blankNifty500Tables
 /lookupTables
