@@ -3,3 +3,4 @@ tradingHolidays.csv
 *.pyc
 /blankNifty500Tables
 dasConfig_cust.json
+/lookupTables
