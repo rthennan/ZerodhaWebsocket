@@ -2,5 +2,4 @@
 tradingHolidays.csv
 *.pyc
 /blankNifty500Tables
-/lookupTables
 dasConfig_cust.json
