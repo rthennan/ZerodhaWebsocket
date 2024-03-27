@@ -170,17 +170,17 @@ Update the rest as required.
        - Copies all tables from the _daily databases to their corresponding main database and drops the tables in the _daily DBs
        - Reports about backup failures.
        - End of DAS_main
-       - Returns True if success. Else False.  
-Other functions used by DAS_main and sub-modules        
-- DAS_gmailer.py
-    - Used to report start, completion and failures in DAS_main
-    - On an Ideal day, you would receive two emails - One for the start and one for the completion of DAS_main
-- DAS_attachmentMailer.py
-    - Report list of blank tables from lookupTables_Nifty500.csv at EoD
-- DAS_errorLogger.py
-    - All functions log their status and failures in their respective log files
-    - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
-    - It also prints the error in Red (I hope)
+       - Returns True if success. Else False.
+- Other functions used by DAS_main and sub-modules                 
+    - DAS_gmailer.py
+        - Used to report start, completion and failures in DAS_main
+        - On an Ideal day, you would receive two emails - One for the start and one for the completion of DAS_main
+    - DAS_attachmentMailer.py
+        - Report list of blank tables from lookupTables_Nifty500.csv at EoD
+    - DAS_errorLogger.py
+        - All functions log their status and failures in their respective log files
+        - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
+        - It also prints the error in Red (I hope)
 
 #### Scripts outside the scope of DAS_main that I use and are completely optional:
  - sysStartupNotify.py
