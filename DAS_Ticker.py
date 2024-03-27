@@ -3,11 +3,17 @@ Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
 LinkedIn: https://www.linkedin.com/in/rthennan
 
+Logs in to Kite with the latest access token found in {accessTokenDBName}.kite1tokens
+Gets instrument_tokens from nifty500TokenList.csv, indexTokenList.csv, niftyOptionsTokenList.csv and bankNiftyOptionsTokenList.csv in the lookupTables directory.
+Subscribes to all of them in FULL mode
+Uses nifty500TokenTable.npy, niftyOptionsTokenTable.npy and bankNiftyOptionsTokenTable.npy to identify the tables to which the tick data should be stored
+Uses different SQL statements for Indexes and the rest of the instruments as Index ticks have fewer columns.
+
 kiteConnect ticker field name changes in v4 and later.
 https://github.com/zerodha/pykiteconnect?tab=readme-ov-file#v4---breaking-changes
-
 Incorporated already and tested in KiteConnect Version : 5.0.1
-The DB Tables would still hold the old names.So this is just for reference.
+The DB Tables would still be created with the old names to avoid major table alterations on existing setups.
+So this is just for reference.
 Old Name => New Name:
     timestamp => exchange_timestamp
     last_quantity => last_traded_quantity

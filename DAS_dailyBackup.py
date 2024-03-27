@@ -9,6 +9,14 @@ Dumps the tables from the 'Daily' databases to a backup database.
 2. Facilitates regular clean up
 3. Helps idenfy small tables in Nifty500, resulting from symbol changes and delisting 
 4. Backup tables can be migrated / downloaded even if ticker is running
+
+Checks and reports if any of the tables in lookupTables_Nifty500.csv are empty at the end of the day.
+    This indicates that the corresponding symbol has potentially changed or has been delisted
+Creates main databases {nifty500DBName}, {niftyOptionsDBName} and {bankNiftyOptionsDBName} . (No _daily suffix)
+Copies all tables from the _daily databases to their corresponding main database and drops the tables in the _daily DBs
+Reports about backup failures.
+End of DAS_main
+Returns True if success. Else False.
 """
 
 from datetime import datetime as dt, date

@@ -4,6 +4,8 @@ Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
 LinkedIn: https://www.linkedin.com/in/rthennan
 
+Can be Run standalone
+
 Will Fetch Nifty 500 list from https://archives.nseindia.com/content/indices/ind_nifty500list.csv
 If local file doesn't exist, 
     - Will create a new 'lookup file with the instrument symbols

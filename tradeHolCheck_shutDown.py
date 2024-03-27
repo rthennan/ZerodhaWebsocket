@@ -2,6 +2,9 @@
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
 LinkedIn: https://www.linkedin.com/in/rthennan
+
+Check if today is a trading Holiday. Notify and shut the machine down if trading holiday.
+Added as a cronjob to run at 08:40 a.m., Monday to Friday: 38 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py
 """
 
 from datetime import datetime as dt, date

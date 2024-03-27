@@ -3,6 +3,10 @@
 Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
 LinkedIn: https://www.linkedin.com/in/rthennan
+
+All functions log their status and failures in their respective log files
+But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
+It also prints the error in Red (I hope)
 """
 
 from datetime import datetime as dt, date

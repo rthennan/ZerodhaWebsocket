@@ -13,6 +13,14 @@ Version
 google-chrome --version
 Tested in version => Google Chrome 123.0.6312.58
 
+Get Holiday List => getHolidayListFromUpStox (Free and Open). 
+If fail, getHolidayListFromNSE. 
+If Fail, use the local file.
+If not local file, play it safe and say today is NOT a holiday.
+Every time getHolidayListFromUpStox or getHolidayListFromNSE is successful, the holiday list is stored locally as tradingHolidays.csv
+Can be Run standalone - Checks if today is a holiday
+Return True if the given date is found in the holiday list. Else False.
+
 """
 import pandas as pd
 from datetime import datetime as dt, date, timedelta

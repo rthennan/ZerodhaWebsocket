@@ -11,6 +11,10 @@ Version
 google-chrome --version
 Tested in version => Google Chrome 123.0.6312.58
 
+Gets the access token for the Zerodha API app and stores it in {accessTokenDBName}.kite1tokens
+Can be Run standalone - Updates latest accessToken in DB
+Returns True if success. Else False.
+
 """
 import time
 from datetime import datetime as dt, date
