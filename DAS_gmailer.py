@@ -12,15 +12,24 @@ import json
 from DAS_errorLogger import DAS_errorLogger
 import traceback
 
+#Expects dasConfig.json to be in the same path 
+# Get the absolute path of the current file
+scriptAbsolutePath = path.abspath(__file__)
+#Get Directory
+# Get the directory of the current script
+scriptDirectory = path.dirname(scriptAbsolutePath)
+# Allows importing dasConfig.json  irrespective of where DAS_gmailer is called from 
+
 
 configFile = 'dasConfig.json'
-with open(configFile,'r') as configFile:
+with open(path.join(scriptDirectory,configFile),'r') as configFile:
     dasConfig = json.load(configFile)
 recipientEmailAddress = dasConfig['destinationEmailAddress']
 #Generate a list if multiple recipients mentioned
 recipientEmailAddress = recipientEmailAddress.split(',')
 senderEmailAddress = dasConfig['senderEmailAddress']
 senderEmailPass = dasConfig['senderEmailPass']
+
 #Gmail App password - https://support.google.com/mail/answer/185833?hl=en
 
 # =============================================================================
@@ -31,7 +40,7 @@ senderEmailPass = dasConfig['senderEmailPass']
 
 def mailLogger(txt):
     print(dt.now(),txt)
-    logDirectory = path.join('Logs',str(date.today())+'_DAS_Logs')
+    logDirectory = path.join(scriptDirectory,'Logs',str(date.today())+'_DAS_Logs')
     if not path.exists(logDirectory):
         	makedirs(logDirectory)
     logFile = path.join(logDirectory,f'DAS_gmailer_logs_{str(date.today())}.log')

@@ -5,9 +5,23 @@ LinkedIn: https://www.linkedin.com/in/rthennan
 """
 
 from datetime import datetime as dt, date
-from DAS_gmailer import DAS_mailer
 from time import sleep
 from os import path, makedirs, system
+import sys
+
+#Expects DAS_gmailer and tradeHolidayCheck to be in the same path 
+# Get the absolute path of the current file
+scriptAbsolutePath = path.abspath(__file__)
+#Get Directory
+# Get the directory of the current script
+scriptDirectory = path.dirname(scriptAbsolutePath)
+
+# Append the script directory to the system path
+if scriptDirectory not in sys.path:
+    sys.path.append(scriptDirectory)
+
+# Allows importing DAS_gmailer and tradeHolidayCheck irrespective of where traceHolCheck is called from 
+from DAS_gmailer import DAS_mailer
 from tradeHolidayCheck import tradeHolidayCheck
 
 

@@ -4,3 +4,5 @@ dasConfig.json
 *.pyc
 /blankNifty500Tables
 /lookupTables
+dasConfig.json
+dasConfig_cust.json
