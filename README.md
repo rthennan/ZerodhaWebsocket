@@ -90,6 +90,7 @@ Update the rest as required.
   -   Default values - `15` and `35` - 3:35 p.m. - **Valid**
 #### 3. Customize lookupTables > lookupTables_Nifty500.csv with additional instruments
   - The lookupTables directory **WILL NOT** be downloaded as it is included in .gitignore. This is to ensure you do not accidentally overwrite any customization when you pull changes from the Repo
+  - If you want to add instruments to the lookup, run `python lookupTablesCreator.py` after updating dasConfig.json to let the script create the file.
   - lookupTables > lookupTables_Nifty500.csv is the only persistent list that will automatically be updated (only additions) without removing older instruments.
   - If you wish to subscribe to additional instruments other than Nifty500, Nifty and BankNifty Options, add them to lookupTables_Nifty500.csv
   - Use the existing Symbols and TableNames in the file as a reference.
