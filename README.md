@@ -90,6 +90,7 @@ Update the rest as required.
   -   Default values - `15` and `35` - 3:35 p.m. - **Valid**
 #### 3. Customize lookupTables > lookupTables_Nifty500.csv with additional instruments
   - The lookupTables directory **WILL NOT** be downloaded as it is included in .gitignore. This is to ensure you do not accidentally overwrite any customization when you pull changes from the Repo
+  - If you want to add instruments to the lookup, run `python lookupTablesCreator.py` after updating dasConfig.json to let the script create the file.
   - lookupTables > lookupTables_Nifty500.csv is the only persistent list that will automatically be updated (only additions) without removing older instruments.
   - If you wish to subscribe to additional instruments other than Nifty500, Nifty and BankNifty Options, add them to lookupTables_Nifty500.csv
   - Use the existing Symbols and TableNames in the file as a reference.
@@ -169,17 +170,17 @@ Update the rest as required.
        - Copies all tables from the _daily databases to their corresponding main database and drops the tables in the _daily DBs
        - Reports about backup failures.
        - End of DAS_main
-       - Returns True if success. Else False.  
-Other functions used by DAS_main and sub-modules        
-- DAS_gmailer.py
-    - Used to report start, completion and failures in DAS_main
-    - On an Ideal day, you would receive two emails - One for the start and one for the completion of DAS_main
-- DAS_attachmentMailer.py
-    - Report list of blank tables from lookupTables_Nifty500.csv at EoD
-- DAS_errorLogger.py
-    - All functions log their status and failures in their respective log files
-    - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
-    - It also prints the error in Red (I hope)
+       - Returns True if success. Else False.
+- Other functions used by DAS_main and sub-modules                 
+    - DAS_gmailer.py
+        - Used to report start, completion and failures in DAS_main
+        - On an Ideal day, you would receive two emails - One for the start and one for the completion of DAS_main
+    - DAS_attachmentMailer.py
+        - Report list of blank tables from lookupTables_Nifty500.csv at EoD
+    - DAS_errorLogger.py
+        - All functions log their status and failures in their respective log files
+        - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
+        - It also prints the error in Red (I hope)
 
 #### Scripts outside the scope of DAS_main that I use and are completely optional:
  - sysStartupNotify.py
@@ -187,34 +188,62 @@ Other functions used by DAS_main and sub-modules
      - Added as a cronjob to run on startup: `@reboot /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`
  - tradeHolCheck_shutDown.py
      - Check if today is a trading Holiday. Notify and shut the machine down if trading holiday.
-     - Added as a cronjob to run at 08:40 a.m., Monday to Friday: `38 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`        
-
-### Breaking changes for existing users
-- Doc in Progress
+     - Added as a cronjob to run at 08:40 a.m., Monday to Friday: `40 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/tradeHolCheck_shutDown.py`        
   
 ### **Automation I use outside the provided code:**
 - I run the whole thing in an AWS EC2 machine (~~m5.large~~ c6a.xlarge)
-- I've setup an AWS Lambda function (EventBridge - CloudWatch Events) to start the machine every weekday at 08:30 IST .
+- I've setup an AWS Lambda function (EventBridge - CloudWatch Events) to start the machine every weekday at 08:30 IST.
+- It could start a bit late, even at 09:10 and then DAS_main.py. But starting the machine and DAS_main a bit earlier, in case Zerodha or some other component in the pipeline has some breaking change that the code has to adapt to.
   - Instead of running the Python code directly, I have wrapped them inside bash scripts that perform the following:
   - Change directories if needed
   - Start named [tmux](https://github.com/tmux/tmux/wiki) sessions and log the screen output. 
   - Run the corresponding Python code.
     - The named tmux sessions allow me to connect to the machine and switch to the specific job if needed.
     - I am logging the screen (stdout) output in case the websocket or some other part of the code spits or does something that isn't exactly an exception
-    - For example, das5TMuxAuto.sh :  
+    - For example, dasTMuxAuto.sh :  
 ![image](https://user-images.githubusercontent.com/38931343/151724720-9dc71e02-ca09-44a2-a1e4-b1424840237c.png)
    
 - Cronjob list from the instance:  
 ![image](https://user-images.githubusercontent.com/38931343/151722312-6de3b807-8ab2-4bba-98a7-7ef9e4395996.png)
-  - Startup Notify - Sends me an email when the machine powers On
-  - holCheck - Shuts the instance down if today is a trading holiday
-  - das5AccessToken - Runs accessTokenReq.py and accessTokenReqDAS6.py to fetch the access tokens
-  - das5TMuxAuto - Starts DAS5/DAS5_MasterV1.py
-  - das6TMuxAuto - Starts DAS6/DAS6_MasterV1.py 
-  - dbSizeCheck - Checks disk utilization and DB growth size and notifies me by email.(code not included here)
+  - sysStartupNotify - Sends me an email when the machine powers On
+      - `@reboot /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`
+  - tradeHolCheck_shutDown
+      - Shuts the instance down if today is a trading holiday
+      - 08:40 a.m., Monday to Friday: `40 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/tradeHolCheck_shutDown.py` 
+  - dasTMuxAuto - Starts ZerodhaWebsocket/DAS6_main.py 
+  - dbSizeCheck - Checks disk utilization and DB growth size and notifies me by email. (code not included here)
 
 The only part of this project that is still being done manually is exporting the database from EC2 and importing it to my local machine.  
 This has to be done cause AWS EBS is expensive compared to local storage (duh!), and I do this roughly once a month. 
-Though I have automated parts of this process (dump in AWS, SCP from Local, import in local, master backup to Deep Archive), it has to be triggered manually as the local machine and the EC2 instance might not be running at the same time.
+Though I have automated parts of this process (dump in AWS, SCP from Local, import in local, disaster recovery backup to Deep Archive), it has to be triggered manually as the local machine and the EC2 instance might not be running at the same time.
+
+### Changelog:
+  #### <ins>**2024-03-27**</ins>:
+   - Major revamp of the entire project
+   - <ins>**Breaking Changes for existing users**</ins>
+       - If you were using the previous version of the project (DAS5,DAS6 and what not), firstly, thank you for putting up with the insane naming convention
+       - The previous version was not big on versioning for the packages but was actually reliant on specific versions in certain places.  
+       - But I have used more recent versions of selenium (4.6) and kiteconnect(5.0.1) to keep the project somewaht futureproof and this has resulted in breaking changes in a few places.
+       - Refer to requirements.txt for the exact versions of the packages required for the current version of the project
+       - Selenium 4.6 :
+           - Webdriver binary doesn't have to be downloaded and stored locally - Good.
+           - Uses driver.find_element(By.XPATH,'xpath_to_find'). Versions before 4 use driver.find_element_by_xpath('xpath_to_find') - Breaking change
+       - kiteconnect 5.0.1 (Was using 3. something earlier):
+           - kiteConnect ticker field name changes in v4 and later.https://github.com/zerodha/pykiteconnect?tab=readme-ov-file#v4---breaking-changes
+           - This meant updating the SQL statements used in the ticker to use different keys from the ticker feed.
+           - However, I have retained the same column names for the tables.
+           - So if you have other kiteconnect websocket applications that use kiteconnect versions older than 4, either run this in a separate virtualenv or update the SQL statements in DAS_ticker to the old field names
+           - Refer to the header in DAS_ticker to know the old field names and the corresponding new ones
+   - Uses One Zerodha API app. Was using two earlier
+   - One websocket connection for all instruments from Nifty 500, Nifty Weekly options and BankNifty weekly options (was using six earlier)
+       - Current and Next week's expiry for Weekly options
+   - Config stored in file dasConfig.json (was creds.json)
+   - Database names, MySQL port numbers and market close times are now customizable through dasConfig.json
+   - The trading holiday list is fetched dynamically on every run
+   - Weekly expiry dates for Nifty and BankNifty are fetched dynamically from the Zerodha Instrument dump and don't rely on the tradingHolidays list any more.
+   - No longer disconnecting and updating weekly options list to handle huge moves in Indexes
+   - Fetching ALL instruments for NIFTY and BANKNIFTY weekly options (current and next week) as opposed to a shortlist earlier
+   - nifty500Updater ensures all new Nifty500 instruments are added to the ticker automatically
+   - Removes maintenance activities that were earlier required for maintaining the latest Nifty 500 Instrument and trading holiday list
 
 Feel free to [contact me](https://www.linkedin.com/in/rthennan) for any questions. 
