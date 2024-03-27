@@ -31,14 +31,14 @@ DAS - Data Acquisition System. That is what I am calling it.
 - Install Python3
 - Install MySQL / MariaDB Server
 - MySQL Client
--   For Windows: https://stackoverflow.com/questions/34836570/how-do-i-install-and-use-mysqldb-for-python-3-on-windows-10
--   For Linux  
-    `sudo apt-get update`  
-    `sudo apt-get install libmysqlclient-dev libmariadb-dev`  
+    -   For Windows: https://stackoverflow.com/questions/34836570/how-do-i-install-and-use-mysqldb-for-python-3-on-windows-10
+    -   For Linux  
+        `sudo apt-get update`  
+        `sudo apt-get install libmysqlclient-dev libmariadb-dev`  
 -   Install Google Chrome
--     For Linux:
-      wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-      sudo dpkg -i google-chrome-stable_current_amd64.deb
+    - For Linux
+        - `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb`
+        - `sudo dpkg -i google-chrome-stable_current_amd64.deb`
 - Ensure you have installed the MySQL client packages at the OS level. Else, pip install will fail for mysqlclient
 - `pip install -r requirements.txt`
 
@@ -89,11 +89,12 @@ Update the rest as required.
   -   You can perform such testing without disturbing the actual code
   -   Default values - `15` and `35` - 3:35 p.m. - **Valid**
 #### 3. Customize lookupTables > lookupTables_Nifty500.csv with additional instruments
+  - The lookupTables directory **WILL NOT** be downloaded as it is included in .gitignore. This is to ensure you do not accidentally overwrite any customization when you pull changes from the Repo
   - lookupTables > lookupTables_Nifty500.csv is the only persistent list that will automatically be updated (only additions) without removing older instruments.
   - If you wish to subscribe to additional instruments other than Nifty500, Nifty and BankNifty Options, add them to lookupTables_Nifty500.csv
   - Use the existing Symbols and TableNames in the file as a reference.
   - The symbols have to be valid for Zerodha. Use the [Zerodha Instrument Dump](https://api.kite.trade/instruments) to validate
-  - Ensure the TableName does not have any blank spaces or special characters.
+  - Ensure the TableName has no blank spaces or special characters other than `_` (underscore).
   - The TableName will be created in the databases the next time DAS_main.py or lookupTablesCreator.py are run
   - If you haven't provided this file when DAS_main.py is run, nifty500Updater.py as a part of it will create lookupTables_Nifty500.csv
      -  The auto-generated file will contain
@@ -180,8 +181,13 @@ Other functions used by DAS_main and sub-modules
     - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
     - It also prints the error in Red (I hope)
 
-#### Scripts outside the scope of DAS_main:
- - Doc in Progress
+#### Scripts outside the scope of DAS_main that I use and are completely optional:
+ - sysStartupNotify.py
+     - Send an email stating the machine has started.
+     - Added as a cronjob to run on startup: `@reboot /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`
+ - tradeHolCheck_shutDown.py
+     - Check if today is a trading Holiday. Notify and shut the machine down if trading holiday.
+     - Added as a cronjob to run at 08:40 a.m., Monday to Friday: `38 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`        
 
 ### Breaking changes for existing users
 - Doc in Progress
@@ -207,15 +213,8 @@ Other functions used by DAS_main and sub-modules
   - das6TMuxAuto - Starts DAS6/DAS6_MasterV1.py 
   - dbSizeCheck - Checks disk utilization and DB growth size and notifies me by email.(code not included here)
 
-The only part of this project, other than the yearly activity still being done manually, is exporting the database from AWS and importing it to my local machine.  
+The only part of this project that is still being done manually is exporting the database from EC2 and importing it to my local machine.  
 This has to be done cause AWS EBS is expensive compared to local storage (duh!), and I do this roughly once a month. 
-Though I have automated parts of this process (dump in AWS, SCP from Local, import in local), it has to be triggered manually as the local machine and the AWS instance might not be running at the same time.
-
-I started this project with hopes of building a trading bot.  
-Specifically, the least recommended approach - Intraday Trading on Naked Index Options for Nifty and BankNifty.
-The attempts failed, of course. More details on the Failed Approach can be found in the [timeSeriesFail](https://github.com/rthennan/timeSeriesFail) Repo.
+Though I have automated parts of this process (dump in AWS, SCP from Local, import in local, master backup to Deep Archive), it has to be triggered manually as the local machine and the EC2 instance might not be running at the same time.
 
 Feel free to [contact me](https://www.linkedin.com/in/rthennan) for any questions. 
-
-### **To Do:**   
-Reorganize names for DBs, tables, logs and access tokens. DAS<X> is inconsistent and all over the place.
