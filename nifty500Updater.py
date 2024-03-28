@@ -131,11 +131,14 @@ def getCurrentFuture(indexName):
         return indexName+nextMonthFutFormat
 
 def replaceSpecial(intext):
-    #Replace non table name friendly special characters with _
+    #Remove '-BE' if found at the end of the symbolName
     #Subscribe to the BE symbols, yes.
     #But store tick data in table name without the BE flag
     #This way, if/when the BE flag gets removed, the data will still be in the same table
-    return intext.replace('-', '_').replace('&', '_').replace('-BE','')
+    if intext[-3:] == '-BE':
+        intext = intext[:-3]
+    #Replace non table name friendly special characters with _
+    return intext.replace('-BE','').replace('-', '_').replace('&', '_')
 
 def getNifty500SymbolList():    
     '''
@@ -283,7 +286,7 @@ def updateSymbolTableNameList():
         
         #Replacing Original Looup File with updated list
         lookupTable.to_csv(currentLookupTablePath,index=False)
-        changesMade = changesMade+f'\n{todayNSE500TodayListName} and {referenceLookupTableName} backed up for reference'
+        changesMade = changesMade+f'\n\n{todayNSE500TodayListName} and {referenceLookupTableName} backed up for reference\n'
         msg = 'lookup Table lookupTables_Nifty500.csv Updated'
         nifty500UpdateChangelogger(msg)
         nifty500UpdateChangelogger(changesMade)
