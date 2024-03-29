@@ -48,6 +48,7 @@ if __name__ == '__main__':
         #Will return True if Holiday
         
         isTradingHoliday = tradeHolidayCheck(str(date.today())) 
+        #isTradingHoliday = False #Uncomment this line if you want to override Holiday check
         
         if isTradingHoliday: 
             msg = f'DAS Main - Today {date.today()} is a trading Holiday. DAS Main exiting'
