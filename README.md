@@ -2,10 +2,26 @@
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
 DAS - Data Acquisition System. That is what I am calling it.
 
-## **Index:**  
+## **Contents:**  
 ### **[1. Pre-requisites](#pre-requisites)**
 ### **[2. Tools/Packages primarily used](#toolspackages-primarily-used)**
-### **[3. OS Supported](https://github.com/rthennan/ZerodhaWebsocket?tab=readme-ov-file#os-supported)**
+### **[3. OS Supported](#os-supported)**
+### **[4. Setup/Installation](#setupinstallation-)**
+   - **4.1 Install Python3**
+   - **4.2 Install MySQL / MariaDB Server**
+   - **4.3 MySQL Client**
+   - **4.4 Install Google Chrome**
+   - **4.5 Install the MySQL client packages at the OS level. Else, pip install will fail for mysqlclient**
+   - **4.6 Download / Clone this repo**
+   - **4.7 [Update dasConfig.json](#2-update-dasconfigjson)**
+   - **4.8 Customize lookupTables > lookupTables_Nifty500.csv with additional instruments**
+   - **4.9 pip install -r requirements.txt** 
+### **[5. To Execute](#to-execute)**
+### **[6. Detailed explanation of the scripts](#but-what-does-it-do)**
+### **[7. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
+### **[8. Changelog](#changelog)**
+   - **[8.1 2024-03-27](#2024-03-27)**
+
 
 
  ### **Pre-requisites:**
@@ -49,7 +65,6 @@ DAS - Data Acquisition System. That is what I am calling it.
         - `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb`
         - `sudo dpkg -i google-chrome-stable_current_amd64.deb`
 - Ensure you have installed the MySQL client packages at the OS level. Else, pip install will fail for mysqlclient
-- `pip install -r requirements.txt`
 
 #### 1. Download / Clone this repo:
   - `git clone https://github.com/rthennan/ZerodhaWebsocket.git`
@@ -111,6 +126,8 @@ Update the rest as required.
         -  Nifty 500 instruments on that day
         -  NIFTY 50 and NIFTY BANK indexes
         -  NIFTY and BANKNIFTY Futures for the current month
+#### 4. `pip install -r requirements.txt`
+
 ### To Execute:
 - `cd ZerodhaWebsocket`
 - `python DAS_main.py` or `python3 DAS_main.py`
