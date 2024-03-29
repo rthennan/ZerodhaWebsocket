@@ -34,7 +34,10 @@ DAS - Data Acquisition System. That is what I am calling it.
     -   For Windows: https://stackoverflow.com/questions/34836570/how-do-i-install-and-use-mysqldb-for-python-3-on-windows-10
     -   For Linux  
         `sudo apt-get update`  
-        `sudo apt-get install libmysqlclient-dev libmariadb-dev`  
+        `sudo apt-get install libmysqlclient-dev` 
+         or
+        `sudo apt-get install libmariadb-dev`
+        
 -   Install Google Chrome
     - For Linux
         - `wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb`
