@@ -112,6 +112,8 @@ Update the rest as required.
     - report failures by email.
     - Create their log files under Logs > yyyy-mm-dd_DAS_Logs
 - DAS_main.py
+  0. isDasConfigDefault.py
+        - Check if dasConfig.json has default invalid values
   1. tradeHolidayCheck.py
         - Get Holiday List => getHolidayListFromUpStox (Free and Open). If fail, getHolidayListFromNSE. If Fail, use the local file.
         - Every time getHolidayListFromUpStox or getHolidayListFromNSE is successful, the holiday list is stored locally as tradingHolidays.csv
@@ -195,6 +197,7 @@ Update the rest as required.
     - In such cases, run manualAccessTokenReq.py to manually login to the kiteconnect URL and paste the response URL
     - manualAccessTokenReq will then get the accesstoken using the requestToken in the URL you provided
     - accesstokenreq will return True if the accestoken is fresh (generated after 08:00 a.m. today)
+    - In short, on automation failure, you can run manualAccessTokenReq and then rerun das_main
 
 #### Scripts outside the scope of DAS_main that I use and are completely optional:
  - sysStartupNotify.py
