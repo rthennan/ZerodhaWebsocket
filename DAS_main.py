@@ -43,7 +43,7 @@ def dasMainlogger(txt):
 
 if __name__ == '__main__':
     try:
-        #Some checkes can be combined into fewer lines with one statement or nested ifs.
+        #Some of the below checks can be combined into fewer lines with one statement or nested ifs.
         #Doing it this way for better readability
         #Will return True if Holiday
         
@@ -107,7 +107,7 @@ if __name__ == '__main__':
             
             DAS_ticker_process = multiprocessing.Process(target=DAS_Ticker)
             DAS_ticker_process.start()
-            msg = f'All Preparation steps and rpechecks completed successfully. Proceeding wtih DAS ticker.\nTicker will be closed at {dt.now().replace(hour=marketCloseHour, minute=marketCloseMinute, second=0, microsecond=0)}'
+            msg = f'All Preparation steps and prechecks completed successfully. Proceeding wtih DAS ticker.\nTicker will be closed at {dt.now().replace(hour=marketCloseHour, minute=marketCloseMinute, second=0, microsecond=0)}'
             DAS_mailer(f'DAS Main - Ticker Started at {str(dt.now())[:19]}',msg)
             #DAS_ticker_process is started as a parallel thread.
             #killer is a countdown timer that runs in parallel with the ticker.
