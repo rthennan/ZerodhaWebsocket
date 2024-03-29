@@ -43,6 +43,7 @@ import json
 from os import path, makedirs
 from DAS_errorLogger import DAS_errorLogger
 import traceback
+from isDasConfigDefault import isDasConfigDefault
 
 numbOfRetries = 5
 configFile = 'dasConfig.json'
@@ -90,118 +91,125 @@ def isAccessTokenInDBFresh():
     
 
 def accessTokenReq():    
-    exceptMsg = ''
-    for attempt in range(1,numbOfRetries+1):
-    
-        try:
-    
-            conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
-            conn.autocommit(True)
-            c = conn.cursor()
-            c.execute(f"CREATE DATABASE IF NOT EXISTS {accessTokenDBName}")
-            #Why kite1tokens ? If zerodha imposes limits on the number of subscribable instruments in the fture, might need more API apps
-            c.execute(f"CREATE TABLE IF NOT EXISTS {accessTokenDBName}.kite1tokens (timestamp DATETIME UNIQUE,requestUrl varchar(255) ,reqToken varchar(255) ,accessToken varchar(255))")
-            shortsql = f"INSERT into {accessTokenDBName}.kite1tokens values (%s, %s, %s, %s)"
-            kite = KiteConnect(api_key = apiKey)
-            url = (kite.login_url())
-            loginName = zerodhaLoginName
-            password = zerodhaPass
-            
-            options = Options()
-            options.headless = True
-            # Use Service object to specify path to the Chrome driver
-            service = Service(ChromeDriverManager().install())
-            #driver = webdriver.Chrome(ChromeDriverManager().install(),options=options)
-            # Initiate the webdriver instance with the service and options
-            driver = webdriver.Chrome(service=service, options=options)
-            
-            accessTokenLogger("DAS - Access Token - Execution started")
-            
-            driver.get(url)
-            accessTokenLogger("DAS - Entered Try Block")
-                    
-            #Wait for the Page to Load completely
-            wait = WebDriverWait(driver, 10)
-            accessTokenLogger("Opening the main Login Page")
-            #Enter credentials and submit
-            submitButton = '//*[@id="container"]/div/div/div/form/div[4]/button'
-    
-            element = wait.until(EC.element_to_be_clickable((By.XPATH, submitButton))) 
-            
-            driver.find_element(By.XPATH,'//*[@id="container"]/div/div/div[2]/form/div[1]/input').send_keys(loginName)
-            driver.find_element(By.XPATH,'//*[@id="container"]/div/div/div[2]/form/div[2]/input').send_keys(password)
-            driver.find_element(By.XPATH,submitButton).click()
-            accessTokenLogger("Credentials Entered and submitted. Waiting for TOTP page to load")
-            #Wait for the 2FA Page to Load completely
-    
-            totpInputXpath = '//*[@id="container"]/div[2]/div/div[2]/form/div[1]/input'
-            # Wait for the totp field to load
-            element = wait.until(EC.element_to_be_clickable((By.XPATH, totpInputXpath))) 
-            
-            totp = pyotp.TOTP(TOTP_seed)
-            otpchangers = [29,30,31,59,0,1]
-            #Waiting if OTP is about to change
-            while dt.now().second in otpchangers:
-                accessTokenLogger('otpchanger '+str(dt.now().second))
-                time.sleep(1)
-                #Enter TOTP
-            driver.find_element(By.XPATH,totpInputXpath).send_keys(totp.now())
-            #Wait for the 2FA Page to Load completely
-            accessTokenLogger("DAS - Pin entered and submitted.")
-            time.sleep(5)
-            #Capture the redirect URL
-            tokenUrl = (driver.current_url)
-            reqToken = tokenUrl
-            #Token fetch code start
-            
-            lenReq = len("request_token=")
-            reqToken = reqToken[reqToken.find('request_token=')+lenReq:]
-            endChar = reqToken.find('&')
-            if endChar!=-1:
-                reqToken = reqToken[:endChar]
-            #Token fetch code end
-            url = "Response URL: " +tokenUrl
-            tok = "Request Token: " +reqToken
-            accessTokenLogger(url)
-            accessTokenLogger(tok)
-            accessTokenLogger("Retrieving Access Token")
-            session = kite.generate_session(reqToken, apisec)
-            accessToken = session['access_token']
-            msg = f"Access Token: {accessToken}"
-            accessTokenLogger(msg)
-            c.execute(shortsql,[dt.now(),tokenUrl,reqToken,accessToken])
-            c.close()
-            conn.close()
-            accessTokenLogger('Updated in DB')
-            msg = f'Access Token succeeded at {dt.now()}'
-            accessTokenLogger(msg)
-            #DAS_mailer(f'DAS - Access Token Successful after {attempt} attempt(s)' ,msg)
-            return True
-    
-        except Exception as e:            
-            exceptMsg = msg = f'DAS - Access token Failed. Attempt No :{attempt} . Exception-> {e}. Traceback : {traceback.format_exc()}.\nWill check if accessToken in DB is fresh'
-            DAS_errorLogger(msg)
-            accessTokenLogger(msg)
-            availableTokenGood = isAccessTokenInDBFresh()
-            if availableTokenGood:
-                msg = 'Access token available in DB is Fresh. Will use it for the ticker.\n But see why accessTokenReq failed in the first place'
-                DAS_errorLogger(msg)
-                accessTokenLogger(msg) 
-                DAS_mailer('DAS - accessTokenReq FAILED!!!. Using latest token from Today',f'Check DAS_accessToken_Logs_{str(date.today())}.log to see why it failed and troubleshoot if the issue is not transient')
-                return True
-            else:
-                msg = '\nAccess token in DB is not fresh.\nRun manualAccessTokenReq.py if possible.\nWill retry accessTokenReq in 30 seconds'
-                DAS_errorLogger(msg)
-                accessTokenLogger(msg)            
-            time.sleep(30)
-        else:
-            break
-    else:
-        msg = f'DAS - Access token Failed After {numbOfRetries} attempts. Exception: (exceptMsg)'
+    if isDasConfigDefault():
+        msg = 'DAS Config has defaults. accessTokenReq is exiting'
         accessTokenLogger(msg)
         DAS_errorLogger(msg)
-        DAS_mailer('DAS - Access token Failed.',msg) 
         return False
+    else:
+            
+        exceptMsg = ''
+        for attempt in range(1,numbOfRetries+1):
+        
+            try:
+        
+                conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
+                conn.autocommit(True)
+                c = conn.cursor()
+                c.execute(f"CREATE DATABASE IF NOT EXISTS {accessTokenDBName}")
+                #Why kite1tokens ? If zerodha imposes limits on the number of subscribable instruments in the fture, might need more API apps
+                c.execute(f"CREATE TABLE IF NOT EXISTS {accessTokenDBName}.kite1tokens (timestamp DATETIME UNIQUE,requestUrl varchar(255) ,reqToken varchar(255) ,accessToken varchar(255))")
+                shortsql = f"INSERT into {accessTokenDBName}.kite1tokens values (%s, %s, %s, %s)"
+                kite = KiteConnect(api_key = apiKey)
+                url = (kite.login_url())
+                loginName = zerodhaLoginName
+                password = zerodhaPass
+                
+                options = Options()
+                options.headless = True
+                # Use Service object to specify path to the Chrome driver
+                service = Service(ChromeDriverManager().install())
+                #driver = webdriver.Chrome(ChromeDriverManager().install(),options=options)
+                # Initiate the webdriver instance with the service and options
+                driver = webdriver.Chrome(service=service, options=options)
+                
+                accessTokenLogger("DAS - Access Token - Execution started")
+                
+                driver.get(url)
+                accessTokenLogger("DAS - Entered Try Block")
+                        
+                #Wait for the Page to Load completely
+                wait = WebDriverWait(driver, 10)
+                accessTokenLogger("Opening the main Login Page")
+                #Enter credentials and submit
+                submitButton = '//*[@id="container"]/div/div/div/form/div[4]/button'
+        
+                element = wait.until(EC.element_to_be_clickable((By.XPATH, submitButton))) 
+                
+                driver.find_element(By.XPATH,'//*[@id="container"]/div/div/div[2]/form/div[1]/input').send_keys(loginName)
+                driver.find_element(By.XPATH,'//*[@id="container"]/div/div/div[2]/form/div[2]/input').send_keys(password)
+                driver.find_element(By.XPATH,submitButton).click()
+                accessTokenLogger("Credentials Entered and submitted. Waiting for TOTP page to load")
+                #Wait for the 2FA Page to Load completely
+        
+                totpInputXpath = '//*[@id="container"]/div[2]/div/div[2]/form/div[1]/input'
+                # Wait for the totp field to load
+                element = wait.until(EC.element_to_be_clickable((By.XPATH, totpInputXpath))) 
+                
+                totp = pyotp.TOTP(TOTP_seed)
+                otpchangers = [29,30,31,59,0,1]
+                #Waiting if OTP is about to change
+                while dt.now().second in otpchangers:
+                    accessTokenLogger('otpchanger '+str(dt.now().second))
+                    time.sleep(1)
+                    #Enter TOTP
+                driver.find_element(By.XPATH,totpInputXpath).send_keys(totp.now())
+                #Wait for the 2FA Page to Load completely
+                accessTokenLogger("DAS - Pin entered and submitted.")
+                time.sleep(5)
+                #Capture the redirect URL
+                tokenUrl = (driver.current_url)
+                reqToken = tokenUrl
+                #Token fetch code start
+                
+                lenReq = len("request_token=")
+                reqToken = reqToken[reqToken.find('request_token=')+lenReq:]
+                endChar = reqToken.find('&')
+                if endChar!=-1:
+                    reqToken = reqToken[:endChar]
+                #Token fetch code end
+                url = "Response URL: " +tokenUrl
+                tok = "Request Token: " +reqToken
+                accessTokenLogger(url)
+                accessTokenLogger(tok)
+                accessTokenLogger("Retrieving Access Token")
+                session = kite.generate_session(reqToken, apisec)
+                accessToken = session['access_token']
+                msg = f"Access Token: {accessToken}"
+                accessTokenLogger(msg)
+                c.execute(shortsql,[dt.now(),tokenUrl,reqToken,accessToken])
+                c.close()
+                conn.close()
+                accessTokenLogger('Updated in DB')
+                msg = f'Access Token succeeded at {dt.now()}'
+                accessTokenLogger(msg)
+                #DAS_mailer(f'DAS - Access Token Successful after {attempt} attempt(s)' ,msg)
+                return True
+        
+            except Exception as e:            
+                exceptMsg = msg = f'DAS - Access token Failed. Attempt No :{attempt} . Exception-> {e}. Traceback : {traceback.format_exc()}.\nWill check if accessToken in DB is fresh'
+                DAS_errorLogger(msg)
+                accessTokenLogger(msg)
+                availableTokenGood = isAccessTokenInDBFresh()
+                if availableTokenGood:
+                    msg = 'Access token available in DB is Fresh. Will use it for the ticker.\n But see why accessTokenReq failed in the first place'
+                    DAS_errorLogger(msg)
+                    accessTokenLogger(msg) 
+                    DAS_mailer('DAS - accessTokenReq FAILED!!!. Using latest token from Today',f'Check DAS_accessToken_Logs_{str(date.today())}.log to see why it failed and troubleshoot if the issue is not transient')
+                    return True
+                else:
+                    msg = '\nAccess token in DB is not fresh.\nRun manualAccessTokenReq.py if possible.\nWill retry accessTokenReq in 30 seconds'
+                    DAS_errorLogger(msg)
+                    accessTokenLogger(msg)            
+                time.sleep(30)
+            else:
+                break
+        else:
+            msg = f'DAS - Access token Failed After {numbOfRetries} attempts. Exception: (exceptMsg)'
+            accessTokenLogger(msg)
+            DAS_errorLogger(msg)
+            DAS_mailer('DAS - Access token Failed.',msg) 
+            return False
 
 if __name__ == '__main__':
     accessTokenReq()

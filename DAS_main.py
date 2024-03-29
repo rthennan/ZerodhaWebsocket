@@ -21,6 +21,7 @@ from DAS_dailyBackup import DAS_dailyBackup
 from DAS_gmailer import DAS_mailer
 from DAS_errorLogger import DAS_errorLogger
 import json
+from isDasConfigDefault import isDasConfigDefault
 
 configFile = 'dasConfig.json'
 with open(configFile,'r') as configFile:
@@ -45,6 +46,7 @@ if __name__ == '__main__':
         #Some checkes can be combined into fewer lines with one statement or nested ifs.
         #Doing it this way for better readability
         #Will return True if Holiday
+        
         isTradingHoliday = tradeHolidayCheck(str(date.today())) 
         
         if isTradingHoliday: 
@@ -54,9 +56,19 @@ if __name__ == '__main__':
             DAS_errorLogger(msg)
             sys.exit()
         else: 
-            msg = 'DAS Main - Trading Holiday Check Passed. Proceeding to accessTokenReq'
+            msg = 'DAS Main - Trading Holiday Check Passed. Proceeding to dasConfif default check'
             dasMainlogger(msg)
-            accessTokenSuccess = accessTokenReq()
+            dasConfigIsDefault = isDasConfigDefault()
+            
+        if dasConfigIsDefault: 
+            msg = 'DAS Main - dasConfig.json has invalid default values. DAS Main exiting'
+            dasMainlogger(msg)
+            DAS_errorLogger(msg)
+            sys.exit()
+        else: 
+            msg = 'dasConfigIsDefault Check Passed. Proceeding to accessTokenReq'
+            dasMainlogger(msg)
+            accessTokenSuccess = accessTokenReq()            
         #Are credentials valid?
         if not accessTokenSuccess: 
             msg = 'DAS Main - accessTokenReq Failed. DAS Main exiting.\naccessTokenReq.py failed'
@@ -94,7 +106,7 @@ if __name__ == '__main__':
             
             DAS_ticker_process = multiprocessing.Process(target=DAS_Ticker)
             DAS_ticker_process.start()
-            msg = f'All Preparation steps and rpechecks completed successfully. Proceeding wtih DAS ticker at {str(dt.now())[:19]}'
+            msg = f'All Preparation steps and rpechecks completed successfully. Proceeding wtih DAS ticker.\nTicker will be closed at {dt.now().replace(hour=marketCloseHour, minute=marketCloseMinute, second=0, microsecond=0)}'
             DAS_mailer(f'DAS Main - Ticker Started at {str(dt.now())[:19]}',msg)
             #DAS_ticker_process is started as a parallel thread.
             #killer is a countdown timer that runs in parallel with the ticker.

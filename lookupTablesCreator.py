@@ -44,6 +44,7 @@ from DAS_errorLogger import DAS_errorLogger
 from time import sleep
 import sys
 import urllib.request
+from isDasConfigDefault import isDasConfigDefault
 numbOfRetries = 5
 
 configFile = 'dasConfig.json'
@@ -483,19 +484,25 @@ def lookupTablesCreatorBankOptions():
         =========================================
         '''          
 def lookupTablesCreator():    
-        n500TablesCreated = lookupTablesCreatorNifty500()
-        niftyOptionsTablesCreated = lookupTablesCreatorNiftyOptions()
-        bankOptionsTablesCreated = lookupTablesCreatorBankOptions()     
-
-        if n500TablesCreated and niftyOptionsTablesCreated and bankOptionsTablesCreated:
-            msg = 'DAS - All Lookup Table Creation Activities Successful'
-            lookupTableCreatorLogger(msg)          
-            return True
-        else:
-            msg = 'One or more Lookup Table Creation Activities FAILED!!!'
-            lookupTableCreatorLogger(msg)  
-            DAS_errorLogger('lookupTablesCreator - '+msg)
+        if isDasConfigDefault():
+            msg = 'DAS Config has defaults. accessTokenReq is exiting'
+            lookupTableCreatorLogger(msg)
+            DAS_errorLogger(msg)
             return False
+        else:
+            n500TablesCreated = lookupTablesCreatorNifty500()
+            niftyOptionsTablesCreated = lookupTablesCreatorNiftyOptions()
+            bankOptionsTablesCreated = lookupTablesCreatorBankOptions()     
+    
+            if n500TablesCreated and niftyOptionsTablesCreated and bankOptionsTablesCreated:
+                msg = 'DAS - All Lookup Table Creation Activities Successful'
+                lookupTableCreatorLogger(msg)          
+                return True
+            else:
+                msg = 'One or more Lookup Table Creation Activities FAILED!!!'
+                lookupTableCreatorLogger(msg)  
+                DAS_errorLogger('lookupTablesCreator - '+msg)
+                return False
     
 if __name__ == '__main__':
     lookupTablesCreator()
