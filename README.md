@@ -121,6 +121,11 @@ Update the rest as required.
         - Gets the access token for the Zerodha API app and stores it in {accessTokenDBName}.kite1tokens
         - Can be Run standalone - Updates latest accessToken in DB
         - Returns True if success. Else False.
+        - On Failure :
+            - Check if the acccesstoken in the DB was updated after 08:00 today.
+                - You could have used manualAccessTokenReq(more on this later) or update the token some other way
+            - If it is fresh, return True but log error and mail
+            - Else, retry after 30 seconds - Tries this 5 times
   3. nifty500Updater.py
        - Gets the latest Nifty 500 list from the NSE site.
        - If local-file lookupTables> lookupTables_Nifty500.csv exists:
@@ -181,6 +186,15 @@ Update the rest as required.
         - All functions log their status and failures in their respective log files
         - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
         - It also prints the error in Red (I hope)
+- manualAccessTokenReq.py
+    - The only automation failure I have faced in the past (almost) 4 years for this automation is when Zerodha makes changes in their Login Page
+    - This breaks the Selenium automation used for accessTokenreq
+    - On a few occasions, I have been able to fix the error and rerun accessTokenreq before the markets open.
+    - One of the reasons I had split accessTokenreq to be standalone in the previous version of the project.
+    - However, updating accessTokenreq to adapt to changes before the market opens is only sometimes feasible.
+    - In such cases, run manualAccessTokenReq.py to manually login to the kiteconnect URL and paste the response URL
+    - manualAccessTokenReq will then get the accesstoken using the requestToken in the URL you provided
+    - accesstokenreq will return True if the accestoken is fresh (generated after 08:00 a.m. today)
 
 #### Scripts outside the scope of DAS_main that I use and are completely optional:
  - sysStartupNotify.py
