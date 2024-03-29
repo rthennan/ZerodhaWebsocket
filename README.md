@@ -2,6 +2,12 @@
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
 DAS - Data Acquisition System. That is what I am calling it.
 
+## **Index:**  
+### **[1. Pre-requisites](#pre-requisites)**
+### **[2. Tools/Packages primarily used](#toolspackages-primarily-used)**
+### **[3. OS Supported](https://github.com/rthennan/ZerodhaWebsocket?tab=readme-ov-file#os-supported)**
+
+
  ### **Pre-requisites:**
 - An active subscription for at least one [Kite Connect API](https://developers.kite.trade/apps) app.
 - Python3
@@ -220,18 +226,20 @@ Update the rest as required.
   - Run the corresponding Python code.
     - The named tmux sessions allow me to connect to the machine and switch to the specific job if needed.
     - I am logging the screen (stdout) output in case the websocket or some other part of the code spits or does something that isn't exactly an exception
-    - For example, dasTMuxAuto.sh :  
-![image](https://user-images.githubusercontent.com/38931343/151724720-9dc71e02-ca09-44a2-a1e4-b1424840237c.png)
-   
-- Cronjob list from the instance:  
-![image](https://user-images.githubusercontent.com/38931343/151722312-6de3b807-8ab2-4bba-98a7-7ef9e4395996.png)
-  - sysStartupNotify - Sends me an email when the machine powers On
-      - `@reboot /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`
-  - tradeHolCheck_shutDown
-      - Shuts the instance down if today is a trading holiday
-      - 08:40 a.m., Monday to Friday: `40 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/tradeHolCheck_shutDown.py` 
-  - dasTMuxAuto - Starts ZerodhaWebsocket/DAS6_main.py 
-  - dbSizeCheck - Checks disk utilization and DB growth size and notifies me by email. (code not included here)
+    - Startup script I use for DAS_main:
+        - startDasMain.sh:
+
+              #!/bin/bash  
+              cd /home/ubuntu/ZerodhaWebsocket
+              tmux new-session -d -s DASRunning '/usr/bin/python3 -u DAS_main.py  2>&1 | tee -a DAS_Main_ScreenLog.log'
+- Cronjob list:
+  
+      @reboot cd /home/ubuntu/ZerodhaWebsocket/ && /usr/bin/python3 sysStartupNotify.py
+      38 8 * * 1-5 cd /home/ubuntu/ZerodhaWebsocket/ && /usr/bin/python3 tradeHolCheck_shutDown.py
+      40 8 * * 1-5 /home/ubuntu/startDasMain.sh
+      50 15 * * 1-5 /home/ubuntu/dasScripts/dbSizeCheck.sh
+      00 16 * * 1-5 sudo poweroff
+- dbSizeCheck.sh - Checks disk utilization and DB growth size and notifies me by email. (code not included here)
 
 The only part of this project that is still being done manually is exporting the database from EC2 and importing it to my local machine.  
 This has to be done cause AWS EBS is expensive compared to local storage (duh!), and I do this roughly once a month. 
