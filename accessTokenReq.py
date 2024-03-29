@@ -14,6 +14,17 @@ Gets the access token for the Zerodha API app and stores it in {accessTokenDBNam
 Can be Run standalone - Updates latest accessToken in DB
 Returns True if success. Else False.
 
+isAccessTokenInDBFresh
+If the automated process fails for whatever reason, the code checks if the Access Token in the DB is Fresh 
+(Created after 08:00 the same day)
+https://kite.trade/forum/discussion/7759/access-token-validity
+And returns True if the token is Fresh
+This way, We are good if
+    - The accesstokenreq code fails after storing the access token in the DB
+    - accesstokenreq failed, but the code was generated manually using manualAccessTokenReq or some other way
+- Why not check if the token in the DB is fresh, even before trying to get one automatically?
+- Allows the code to try at least once.
+
 """
 import time
 from datetime import datetime as dt, date
@@ -33,6 +44,21 @@ from os import path, makedirs
 from DAS_errorLogger import DAS_errorLogger
 import traceback
 
+numbOfRetries = 5
+configFile = 'dasConfig.json'
+with open(configFile,'r') as configFile:
+    dasConfig = json.load(configFile)
+
+zerodhaLoginName = dasConfig['ZerodhaLoginName']
+zerodhaPass = dasConfig['ZerodhaPass']
+apiKey = dasConfig['apiKey']
+apisec = dasConfig['apisec']
+mysqlHost = dasConfig['mysqlHost']
+mysqlUser = dasConfig['mysqlUser']
+mysqlPass = dasConfig['mysqlPass']
+mysqlPort = dasConfig['mysqlPort']
+TOTP_seed = dasConfig['TOTP_seed']
+accessTokenDBName = dasConfig['accessTokenDBName']
 
 def accessTokenLogger(txt):
     print(dt.now(),txt)
@@ -44,23 +70,26 @@ def accessTokenLogger(txt):
     with open(logFile,'a') as f:
         f.write(logMsg)
 
-numbOfRetries = 5
-def accessTokenReq():
-    configFile = 'dasConfig.json'
-    with open(configFile,'r') as configFile:
-        dasConfig = json.load(configFile)
+def isAccessTokenInDBFresh():
+    #Get latest access token's timestamp from DB
+    conne = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, db=accessTokenDBName, port=mysqlPort)
+    ce = conne.cursor()
+    ce.execute('select timestamp from kite1tokens order by timestamp desc limit 1')
+    accTokenLatestTimeStamp = str(ce.fetchone()[0])
+    ce.close()
+    conne.close()  
+    # Parse the string to a datetime object
+    accTokenLatestTimeStamp = dt.strptime(accTokenLatestTimeStamp, '%Y-%m-%d %H:%M:%S')
     
-    zerodhaLoginName = dasConfig['ZerodhaLoginName']
-    zerodhaPass = dasConfig['ZerodhaPass']
-    apiKey = dasConfig['apiKey']
-    apisec = dasConfig['apisec']
-    mysqlHost = dasConfig['mysqlHost']
-    mysqlUser = dasConfig['mysqlUser']
-    mysqlPass = dasConfig['mysqlPass']
-    mysqlPort = dasConfig['mysqlPort']
-    TOTP_seed = dasConfig['TOTP_seed']
-    accessTokenDBName = dasConfig['accessTokenDBName']
+    # Create a datetime object for today at 08:00 a.m.
+    # Replace the hour, minute, second, and microsecond to get today at 08:00 a.m.
+    today8AM = dt.now().replace(hour=8, minute=0, second=0, microsecond=0)
     
+    #Was accessToken generated after 08:00 today?
+    return accTokenLatestTimeStamp > today8AM
+    
+
+def accessTokenReq():    
     exceptMsg = ''
     for attempt in range(1,numbOfRetries+1):
     
@@ -73,11 +102,7 @@ def accessTokenReq():
             #Why kite1tokens ? If zerodha imposes limits on the number of subscribable instruments in the fture, might need more API apps
             c.execute(f"CREATE TABLE IF NOT EXISTS {accessTokenDBName}.kite1tokens (timestamp DATETIME UNIQUE,requestUrl varchar(255) ,reqToken varchar(255) ,accessToken varchar(255))")
             shortsql = f"INSERT into {accessTokenDBName}.kite1tokens values (%s, %s, %s, %s)"
-            """Using DAS1 App"""
-            apikey = apiKey
-            apisec = apisec
-            """Using DAS1 App"""
-            kite = KiteConnect(api_key = apikey)
+            kite = KiteConnect(api_key = apiKey)
             url = (kite.login_url())
             loginName = zerodhaLoginName
             password = zerodhaPass
@@ -153,11 +178,21 @@ def accessTokenReq():
             #DAS_mailer(f'DAS - Access Token Successful after {attempt} attempt(s)' ,msg)
             return True
     
-        except Exception as e:
-            exceptMsg = e
-            msg = f'DAS - Access token Failed. Attempt No :{attempt} . Exception-> {e}. Traceback : {traceback.format_exc()}.\nWill retry after 30 seconds'
+        except Exception as e:            
+            exceptMsg = msg = f'DAS - Access token Failed. Attempt No :{attempt} . Exception-> {e}. Traceback : {traceback.format_exc()}.\nWill check if accessToken in DB is fresh'
             DAS_errorLogger(msg)
             accessTokenLogger(msg)
+            availableTokenGood = isAccessTokenInDBFresh()
+            if availableTokenGood:
+                msg = 'Access token available in DB is Fresh. Will use it for the ticker.\n But see why accessTokenReq failed in the first place'
+                DAS_errorLogger(msg)
+                accessTokenLogger(msg) 
+                DAS_mailer('DAS - accessTokenReq FAILED!!!. Using latest token from Today',f'Check DAS_accessToken_Logs_{str(date.today())}.log to see why it failed and troubleshoot if the issue is not transient')
+                return True
+            else:
+                msg = '\nAccess token in DB is not fresh.\nRun manualAccessTokenReq.py if possible.\nWill retry accessTokenReq in 30 seconds'
+                DAS_errorLogger(msg)
+                accessTokenLogger(msg)            
             time.sleep(30)
         else:
             break
