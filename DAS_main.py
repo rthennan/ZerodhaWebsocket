@@ -56,7 +56,7 @@ if __name__ == '__main__':
             DAS_errorLogger(msg)
             sys.exit()
         else: 
-            msg = 'DAS Main - Trading Holiday Check Passed. Proceeding to dasConfif default check'
+            msg = 'DAS Main - Trading Holiday Check Passed. Proceeding to dasConfig default check'
             dasMainlogger(msg)
             dasConfigIsDefault = isDasConfigDefault()
             
