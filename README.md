@@ -19,12 +19,13 @@ DAS - Data Acquisition System. That is what I am calling it.
 ### **[5. To Execute](#to-execute)**
 ### **[6. Detailed explanation of the Functions](#but-what-does-it-do)**
 ### **[7. Functions outside the scope of DAS](#scripts-outside-the-scope-of-das_main-that-i-use-and-are-completely-optional)**
-   - **sysStartupNotify.py** - Email when machine starts up. Cronjob @reboot
+   - **sysStartupNotify.py** - Email when the machine starts up. Cronjob @reboot
    - **tradeHolCheck_shutDown.py** - Shut the machine down if today is a trading Holiday
    - **getExpiryPrefix** - Generate the prefix for Nifty and BankNifty Option instruments. Useful in backtests.
 ### **[8. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
 ### **[9. Changelog](#changelog)**
    - **[2024-03-27](#2024-03-27)**
+### **[10. Raise Issues](##raise-issues)**     
 
 
 
@@ -37,12 +38,19 @@ DAS - Data Acquisition System. That is what I am calling it.
   - Storing passwords and keys in a plaintext file is a potential security issue.
   - This is used for simplicity. Please consider switching to more secure secret management options (like environment variables) for production deployments.
   - All calls for reading dasConfig.json and using the json would have to be updated.
+- **IMPORTANT - Disk Throughput**
+      - Kite ticker will only send data when there are changes in one or more fields in an instrument.  
+      - So, it is unlikely that all subscribed instruments will get tick data every second, as some might be less active.  
+      - But a conservative approach would be to assume that all subscribed instruments get data every second.  
+      - This means around 1300 tables in the DB are constantly updated.  
+      - So keep an eye on the Disk I/O wait times to see if there are bottlenecks.
+  
  
 ### **Tools/Packages primarily used:**
 - Pandas - For handling CSV and Excel Files
 - Selenium - Automate Kite Authentication and getHolidayList from NSE
 - MySQLdb/MariaDB for persistent store of ticker data
-- numpy - For saving token lists and dictionaries for ticker subscriptions and stores. Pickle could have been used
+- numpy - Used to save token lists and dictionaries for ticker subscriptions and stores. Pickle could have been used
 - shutil - handling files
 - smtplib - Mail notification using Gmail
 - pyotp - for generating TOTP required for Zerodha authentication
@@ -253,7 +261,7 @@ Update the rest as required.
   
 ### **Automation I use outside the provided code:**
 - I run the whole thing in an AWS EC2 machine (~~m5.large~~ c6a.xlarge)
-- I've setup an AWS Lambda function (EventBridge - CloudWatch Events) to start the machine every weekday at 08:30 IST.
+- I've set up an AWS Lambda function (EventBridge—CloudWatch Events) to start the machine every weekday at 08:30 IST.
 - It could start a bit late, even at 09:10 and then DAS_main.py. But starting the machine and DAS_main a bit earlier, in case Zerodha or some other component in the pipeline has some breaking change that the code has to adapt to.
   - Instead of running the Python code directly, I have wrapped them inside bash scripts that perform the following:
   - Change directories if needed
@@ -284,9 +292,9 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
   #### <ins>**2024-03-27**</ins>:
    - Major revamp of the entire project
    - <ins>**Breaking Changes for existing users**</ins>
-       - If you were using the previous version of the project (DAS5,DAS6 and what not), firstly, thank you for putting up with the insane naming convention
+       - If you were using the previous version of the project (DAS5,DAS6 and whatnot), firstly, thank you for putting up with the insane naming convention
        - The previous version was not big on versioning for the packages but was actually reliant on specific versions in certain places.  
-       - But I have used more recent versions of selenium (4.6) and kiteconnect(5.0.1) to keep the project somewaht futureproof and this has resulted in breaking changes in a few places.
+       - But I have used more recent versions of selenium (4.6) and kiteconnect(5.0.1) to keep the project somewhat futureproof, resulting in breaking changes in a few places.
        - Refer to requirements.txt for the exact versions of the packages required for the current version of the project
        - Selenium 4.6 :
            - Webdriver binary doesn't have to be downloaded and stored locally - Good.
@@ -309,4 +317,9 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
    - nifty500Updater ensures all new Nifty500 instruments are added to the ticker automatically
    - Removes maintenance activities that were earlier required for maintaining the latest Nifty 500 Instrument and trading holiday list
 
+### Raise Issues:
+I try to catch up with breaking changes from Zerodha or NSE as soon as possible, as I use the same code daily, and it would also fail.  
+However, my updates weren't fast enough on subtle changes on a few occasions.  
+For example, I failed to notice the expiry date changes in BankNifty (Thur to Wed) for almost a month in September 2023.  
+So, if you use this project and come across some change in NSE or Zerodha that might affect the data acquisition in any way, do not hesitate to create an issue in this repo. I'll address it if applicable or let you know if it is irrelevant.  
 Feel free to [contact me](https://www.linkedin.com/in/rthennan) for any questions. 
