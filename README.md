@@ -20,7 +20,7 @@ DAS - Data Acquisition System. That is what I am calling it.
 ### **[6. Detailed explanation of the scripts](#but-what-does-it-do)**
 ### **[7. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
 ### **[8. Changelog](#changelog)**
-   - **[8.1 2024-03-27](#2024-03-27)**
+   - **[2024-03-27](#2024-03-27)**
 
 
 
