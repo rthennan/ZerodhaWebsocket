@@ -17,9 +17,13 @@ DAS - Data Acquisition System. That is what I am calling it.
    - **4.8 Customize lookupTables > lookupTables_Nifty500.csv with additional instruments**
    - **4.9 pip install -r requirements.txt** 
 ### **[5. To Execute](#to-execute)**
-### **[6. Detailed explanation of the scripts](#but-what-does-it-do)**
-### **[7. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
-### **[8. Changelog](#changelog)**
+### **[6. Detailed explanation of the Functions](#but-what-does-it-do)**
+### **[7. Functions outside the scope of DAS](#scripts-outside-the-scope-of-das_main-that-i-use-and-are-completely-optional)**
+   - **sysStartupNotify.py** - Email when machine starts up. Cronjob @reboot
+   - **tradeHolCheck_shutDown.py** - Shut the machine down if today is a trading Holiday
+   - **getExpiryPrefix** - Generate the prefix for Nifty and BankNifty Option instruments. Useful in backtests.
+### **[8. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
+### **[9. Changelog](#changelog)**
    - **[2024-03-27](#2024-03-27)**
 
 
@@ -225,13 +229,27 @@ Update the rest as required.
     - accesstokenreq will return True if the accestoken is fresh (generated after 08:00 a.m. today)
     - In short, on automation failure, you can run manualAccessTokenReq and then rerun das_main
 
-#### Scripts outside the scope of DAS_main that I use and are completely optional:
+#### Functions outside the scope of DAS_main that I use and are completely optional:
  - sysStartupNotify.py
      - Send an email stating the machine has started.
      - Added as a cronjob to run on startup: `@reboot /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/sysStartupNotify.py`
  - tradeHolCheck_shutDown.py
      - Check if today is a trading Holiday. Notify and shut the machine down if trading holiday.
-     - Added as a cronjob to run at 08:40 a.m., Monday to Friday: `40 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/tradeHolCheck_shutDown.py`        
+     - Added as a cronjob to run at 08:40 a.m., Monday to Friday: `40 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/tradeHolCheck_shutDown.py`
+ - getExpiryPrefix
+     - Generate the prefix for Nifty and BankNifty Option instruments for a given date.
+     - Once the prefix is generated, you can add the strike price and CE/PE to it to find the relevant instrument.
+     - {getExpiryPrefix(inputDate)}{strikePrice}CE or PE
+     - Useful in backtests.
+     - Relies on the trading holidays being maintained in the current folder as tradingHolidaysAllYears.csv
+     - tradingHolidaysAllYears.csv holds holidays from 2019 to 2024
+     - Usage:
+          
+               from getExpiryPrefix import getExpPrefNifty, getExpPrefBankNifty
+               inDate = '2020-01-01'
+               print(getExpPrefBankNifty(inDate))
+               print(getExpPrefNifty(inDate))
+           
   
 ### **Automation I use outside the provided code:**
 - I run the whole thing in an AWS EC2 machine (~~m5.large~~ c6a.xlarge)
