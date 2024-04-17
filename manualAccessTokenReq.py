@@ -29,7 +29,7 @@ YELLOW = '\033[93m'
 CYAN = '\033[96m'
 RESET = '\033[0m'
 
-configFile = 'dasConfig_cust.json'
+configFile = 'dasConfig.json'
 with open(configFile,'r') as configFile:
     dasConfig = json.load(configFile)
 
