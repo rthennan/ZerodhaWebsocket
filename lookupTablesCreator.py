@@ -3,32 +3,35 @@ Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
 
 Downloads Instrument List from Zerodha
-Lists the exchange tokens to be subscribed, based on the lookup table Generated / Updated by nifty500Updater
+Lists the exchange tokens (instrument_token) to be subscribed, based on the lookup table Generated / Updated by nifty500Updater
 Estimate current and next expiry dates for Nifty and BankNifty Options
 Generates Instrument Token Lists for 
     - NiftyOptions - current and next expiry 
     - BankNiftyOptions - current and Next expiry 
-Creates lookup Dictionary that will be used for exchangeToken => TableName in the actual ticker
-Creates DB for storing daily tables. 
-DB Names :
-    Nifty500 +Index +Futures - {nifty500DBName}_daily
-    NiftyOptions - {niftyOptionsDBName}_daily
-    BankNiftyOptions - {bankNiftyOptionsDBName}_daily
-Creates necessary daily tables in MySQL DB for storing tick data.
-Format => 
-    - {nifty500DBName}_daily.TableName
-    - {niftyOptionsDBName}_daily.TableName
-    - {bankNiftyOptionsDBName}_daily.TableName
-nifty500DBName , niftyOptionsDBName and bankNiftyOptionsDBName configured in dasConfig.json
+Creates lookup Dictionaries that will be used for exchangeToken => TableName and exchangeToken => Symbol in the actual ticker
+Creates DB and one table for storing daily tick. Can be used for live queries during market hours
+Table:
+    {nifty500DBName}.dailytable
+Example queries to get data from live DB (live Ticks):
+    SELECT timestamp, price FROM dailytable WHERE tradingsymbol='NIFTY 50' order by timestamp DESC LIMIT 5;
+    SELECT timestamp, price FROM dailytable WHERE tablename='NIFTY' order by timestamp DESC LIMIT 5;
+    SELECT instrument_token, timestamp, price, volume FROM dailytable WHERE tradingsymbol='NIFTY24APRFUT' order by timestamp DESC LIMIT 5;
+    SELECT timestamp, price, volume FROM dailytable WHERE tablename='NIFTYFUT' order by timestamp DESC LIMIT 5;
+    SELECT timestamp, price, volume FROM dailytable WHERE instrument_token=13368834 order by timestamp DESC LIMIT 5;
+nifty500DBName configured in dasConfig.json
 
 Some of the operations for Nifty500 token and Options tokens, 
 lookup table creation and SQL table creation could have been combined.
 combined vs 3 separate lookup tables for ~1300 tokens doesn't have any measurable performance difference.
 But splitting them on purpose, for readability.
 Also, if you don't want a part of the ticker, 
-you could just remove it from here and the main ticker - DAS_ticker'
+you could just remove it from here and the main ticker - DAS_ticker
 
 Check _InstrumentsSubscribed.log to see the list of symbols subscribed to
+
+#Change log - 2024-04-08:
+    - DAS_Ticker now stores live ticks into one table now. This is to reduce IOPS
+    - Hence only creating one table, instead of the previous 'one table per instrument' approach 
 
 """
 import pandas as pd
@@ -56,9 +59,8 @@ mysqlUser = dasConfig['mysqlUser']
 mysqlPass = dasConfig['mysqlPass']
 mysqlPort = dasConfig['mysqlPort']
 
-nifty500_daily_DBName = dasConfig['nifty500DBName']+'_daily'
-niftyOptions_daily_DBName = dasConfig['niftyOptionsDBName']+'_daily'
-bankNiftyOptions_daily_DBName = dasConfig['bankNiftyOptionsDBName']+'_daily'
+dailyTableName = 'dailytable'
+nifty500DBName = dasConfig['nifty500DBName']
 
 lookupDirectory = 'lookupTables'
 n500instrumentLookupFile = 'lookupTables_Nifty500.csv'
@@ -178,10 +180,6 @@ def getBankNiftyExpiry(inDate):
 def lookupTablesCreatorNifty500():
     try:
         
-        conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
-        conn.autocommit(True)
-        c = conn.cursor() 
-
         '''
         =========================================
         Creating Lookup Tables for Nifty500 - Start
@@ -210,7 +208,14 @@ def lookupTablesCreatorNifty500():
         nifty500Instruments = nifty500Instruments[['instrument_token','tradingsymbol']]
         nifty500Instruments = nifty500Instruments.drop_duplicates()
         
-        ##Creating a lookup dictionary - Lookup SYmbol, get TableName
+        #Creating a lookup dictionary for Symbols. Lookup the exchange token, get the Symbol response
+        n500TokenSymbolDict= nifty500Instruments.set_index('instrument_token')['tradingsymbol'].to_dict()  
+        #Saving the exchange_token:Symbol Dictionary
+        np.save(path.join(lookupDirectory,'nifty500TokenSymbolDict.npy'), n500TokenSymbolDict)
+        msg = 'Saved n500TokenTable exchange_token:Symbol Dictionary => nifty500TokenSymbolDict.npy'
+        lookupTableCreatorLogger(msg)        
+        
+        ##Creating a lookup dictionary - Lookup Symbol, get TableName
         nifty500TableNameLookup = n500InstrumentSymbolsTables.set_index('Symbol')['TableName'].to_dict()
         #In the original instrument dump, replacing the symbol with the table name.
         #This way, in the ticker, any response for the instrument_token is stored to its table directly.
@@ -223,18 +228,17 @@ def lookupTablesCreatorNifty500():
         #Creating a lookup dictionary from this.
         #Lookup the exchange token, get the table name as response
         #The tradingsymbol column now holds the Table Name
-        n500TokenTable= nifty500Instruments.set_index('instrument_token')['TableName'].to_dict()
+        n500TokenTableDict= nifty500Instruments.set_index('instrument_token')['TableName'].to_dict()
         
         #Saving the exchange_token:TableName Dictionary
-        np.save(path.join(lookupDirectory,'nifty500TokenTable.npy'), n500TokenTable)
-        msg = 'Saved n500TokenTable exchange_token:TableName Dictionary => nifty500TokenTable.npy'
+        np.save(path.join(lookupDirectory,'nifty500TokenTableDict.npy'), n500TokenTableDict)
+        msg = 'Saved n500TokenTable exchange_token:TableName Dictionary => nifty500TokenTableDict.npy'
         lookupTableCreatorLogger(msg)
         
         #Separating Indexes NIFTY and BANKNIFTY from the main list
         #They have just two columns in the feed - timestamp and price.
-        #The ticket => SQL store statements are different for them.
         #Don't have to be removed from the main list.
-        #just a list to check if response exhchange token in indexlist. If yes, use different stmnt
+        #just a list to check and create different table structure at EoD
         indexInstruments = nifty500Instruments.loc[nifty500Instruments['TableName'].isin(['NIFTY', 'BANKNIFTY'])]
         indexInstruments.drop('TableName',axis=1).to_csv(path.join(lookupDirectory,'indexTokenList.csv'),index=False)	
         msg = 'Saved indexTokenList.csv to differentiate Indexes Nifty and BankNifty from the other instruments for SQL store'
@@ -251,40 +255,6 @@ def lookupTablesCreatorNifty500():
         msg = 'Nifty 500 Instruments Subscribed :\n'+n500InstrumentNameString
         insrumentListLogger(msg)
 
-        #Create database where daily ticks will be stored.
-        #They will be moved to a backup database/table at the end of the day       
-        c.execute(f"CREATE DATABASE IF NOT EXISTS {nifty500_daily_DBName}")
-        
-        #Reading Nifty500 instrument table names 
-        n500instrumentTableNames = n500InstrumentSymbolsTables['TableName'].values.tolist()
-        #Removing indexes from the list as the tables for them should have lesser columns
-        n500instrumentTableNames.remove('NIFTY')
-        n500instrumentTableNames.remove('BANKNIFTY')
-        for tableName in n500instrumentTableNames:
-            c.execute(f"CREATE TABLE IF NOT EXISTS {nifty500_daily_DBName}.`{tableName}` \
-        	(timestamp DATETIME UNIQUE,price DECIMAL(19,2), qty INT UNSIGNED, avgPrice DECIMAL(19,2), volume BIGINT,\
-            bQty INT UNSIGNED, sQty INT UNSIGNED, open DECIMAL(19,2), high DECIMAL(19,2), low DECIMAL(19,2), close DECIMAL(19,2),\
-        	changeper DECIMAL(60,10), lastTradeTime DATETIME, oi INT, oiHigh INT, oiLow INT, \
-        	bq0 INT UNSIGNED, bp0 DECIMAL(19,2), bo0 INT UNSIGNED,\
-        	bq1 INT UNSIGNED, bp1 DECIMAL(19,2), bo1 INT UNSIGNED,\
-        	bq2 INT UNSIGNED, bp2 DECIMAL(19,2), bo2 INT UNSIGNED,\
-        	bq3 INT UNSIGNED, bp3 DECIMAL(19,2), bo3 INT UNSIGNED,\
-        	bq4 INT UNSIGNED, bp4 DECIMAL(19,2), bo4 INT UNSIGNED,\
-        	sq0 INT UNSIGNED, sp0 DECIMAL(19,2), so0 INT UNSIGNED,\
-        	sq1 INT UNSIGNED, sp1 DECIMAL(19,2), so1 INT UNSIGNED,\
-        	sq2 INT UNSIGNED, sp2 DECIMAL(19,2), so2 INT UNSIGNED,\
-        	sq3 INT UNSIGNED, sp3 DECIMAL(19,2), so3 INT UNSIGNED, \
-        	sq4 INT UNSIGNED, sp4 DECIMAL(19,2), so4 INT UNSIGNED)")
-                
-        #Create tables for Indexes NIFTY and BANKNIFTY
-        c.execute(f"CREATE TABLE IF NOT EXISTS  {nifty500_daily_DBName}.BANKNIFTY (timestamp DATETIME UNIQUE,price decimal(12,2))")
-        c.execute(f"CREATE TABLE IF NOT EXISTS {nifty500_daily_DBName}.NIFTY (timestamp DATETIME UNIQUE,price decimal(12,2))") 			
-
-        msg = 'DAS - Nifty 500 Lookup Table Creator Successful\n'
-        lookupTableCreatorLogger(msg)
-        
-        c.close()
-        conn.close()
         return True
     except Exception as e:
         msg = f"Instrument Token Lookup Table Creator - Nifty 500 - failed with exception {e}. Traceback : {str(traceback.format_exc())}"
@@ -306,14 +276,10 @@ def lookupTablesCreatorNiftyOptions():
         '''
         msg = 'DAS - Nifty Options Lookup Table Creation Started'
         lookupTableCreatorLogger(msg)
-        try:        
-            conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
-            conn.autocommit(True)
-            c = conn.cursor()    
-
+        try:
         
-            niftyThisExpiry = getNiftyExpiry(date.today())
-            niftyNextExpiry = getNiftyExpiry(date.today()+timedelta(days=7))
+            niftyThisExpiry = getNiftyExpiry(date.today()) #This Expiry
+            niftyNextExpiry = getNiftyExpiry(date.today()+timedelta(days=7)) #Next Expiry
             
             #Downloading Zerodha Instrument dump 
             zerodhaInstrumentsDump = getZerodhaInstDump()
@@ -336,8 +302,9 @@ def lookupTablesCreatorNiftyOptions():
             niftyOptionsTokenTable = niftyOptionsDF.set_index('instrument_token')['TableName'].to_dict()
     
             #Saving the exchange_token:TableName Dictionary
-            np.save(path.join(lookupDirectory,'niftyOptionsTokenTable.npy'), niftyOptionsTokenTable)
-            msg = 'Saved niftyOptionsTokenTable exchange_token:TableName Dictionary => niftyOptionsTokenTable.npy'
+            #Same dictionary can be used for instrument_token:Symbol lookup for options
+            np.save(path.join(lookupDirectory,'niftyOptionsTokenTableDict.npy'), niftyOptionsTokenTable)
+            msg = 'Saved niftyOptionsTokenTable exchange_token:TableName Dictionary => niftyOptionsTokenTableDict.npy'
             lookupTableCreatorLogger(msg)
             
             #Saving niftyOptions instrument_token list to subscribe.
@@ -350,35 +317,7 @@ def lookupTablesCreatorNiftyOptions():
             niftyOptionsNameString = '\n'.join(niftyOptionsDF['TableName'].astype(str))
             msg = 'Nifty Option Instruments Subscribed :\n'+niftyOptionsNameString
             insrumentListLogger(msg)
-    
-            #Create database where daily ticks will be stored.
-            #They will be moved to a backup database/table at the end of the day       
-            c.execute(f"CREATE DATABASE IF NOT EXISTS {niftyOptions_daily_DBName}")
-            
-            #Reading Nifty Option instruments table names 
-            niftyOptionsInstrumentTables = niftyOptionsDF['TableName'].values.tolist()
-    
-            for tableName in niftyOptionsInstrumentTables:
-                c.execute(f"CREATE TABLE IF NOT EXISTS {niftyOptions_daily_DBName}.`{tableName}` \
-            	(timestamp DATETIME UNIQUE,price DECIMAL(19,2), qty INT UNSIGNED, avgPrice DECIMAL(19,2), volume BIGINT,\
-                bQty INT UNSIGNED, sQty INT UNSIGNED, open DECIMAL(19,2), high DECIMAL(19,2), low DECIMAL(19,2), close DECIMAL(19,2),\
-            	changeper DECIMAL(60,10), lastTradeTime DATETIME, oi INT, oiHigh INT, oiLow INT, \
-            	bq0 INT UNSIGNED, bp0 DECIMAL(19,2), bo0 INT UNSIGNED,\
-            	bq1 INT UNSIGNED, bp1 DECIMAL(19,2), bo1 INT UNSIGNED,\
-            	bq2 INT UNSIGNED, bp2 DECIMAL(19,2), bo2 INT UNSIGNED,\
-            	bq3 INT UNSIGNED, bp3 DECIMAL(19,2), bo3 INT UNSIGNED,\
-            	bq4 INT UNSIGNED, bp4 DECIMAL(19,2), bo4 INT UNSIGNED,\
-            	sq0 INT UNSIGNED, sp0 DECIMAL(19,2), so0 INT UNSIGNED,\
-            	sq1 INT UNSIGNED, sp1 DECIMAL(19,2), so1 INT UNSIGNED,\
-            	sq2 INT UNSIGNED, sp2 DECIMAL(19,2), so2 INT UNSIGNED,\
-            	sq3 INT UNSIGNED, sp3 DECIMAL(19,2), so3 INT UNSIGNED, \
-            	sq4 INT UNSIGNED, sp4 DECIMAL(19,2), so4 INT UNSIGNED)")
-                    
-            msg = 'DAS - Nifty Options Lookup Table Creation Successful\n'
-            lookupTableCreatorLogger(msg)    
-            
-            c.close()
-            conn.close()
+
             return True
         except Exception as e:
             msg = f"Instrument Token Lookup Table Creator - Nifty Options - failed with exception {e}. Traceback : {str(traceback.format_exc())}"
@@ -402,11 +341,8 @@ def lookupTablesCreatorBankOptions():
         msg = 'DAS - BankNifty Options Lookup Table Creation Started'
         lookupTableCreatorLogger(msg)
         try:        
-            conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
-            conn.autocommit(True)
-            c = conn.cursor()  
-            bankNiftyThisExpiry = getBankNiftyExpiry(date.today())
-            bankNiftyNextExpiry = getBankNiftyExpiry(date.today()+timedelta(days=7))
+            bankNiftyThisExpiry = getBankNiftyExpiry(date.today()) #This Expiry
+            bankNiftyNextExpiry = getBankNiftyExpiry(date.today()+timedelta(days=7)) #Next Expiry
             
             #Downloading Zerodha Instrument dump 
             zerodhaInstrumentsDump = getZerodhaInstDump()
@@ -429,8 +365,9 @@ def lookupTablesCreatorBankOptions():
             bankNiftyOptionsTokenTable = bankNiftyOptionsDF.set_index('instrument_token')['TableName'].to_dict()
 
             #Saving the exchange_token:TableName Dictionary
-            np.save(path.join(lookupDirectory,'bankNiftyOptionsTokenTable.npy'), bankNiftyOptionsTokenTable)
-            msg = 'Saved bankNiftyOptionsTokenTable exchange_token:TableName Dictionary => bankNiftyOptionsTokenTable.npy'
+            #Same dictionary can be used for instrument_token:Symbol lookup for options
+            np.save(path.join(lookupDirectory,'bankNiftyOptionsTokenTableDict.npy'), bankNiftyOptionsTokenTable)
+            msg = 'Saved bankNiftyOptionsTokenTable exchange_token:TableName Dictionary => bankNiftyOptionsTokenTableDict.npy'
             lookupTableCreatorLogger(msg)
             
             #Saving BankNiftyOptions instrument_token list to subscribe.
@@ -443,34 +380,6 @@ def lookupTablesCreatorBankOptions():
             bankNiftyOptionsNameString = '\n'.join(bankNiftyOptionsDF['TableName'].astype(str))
             msg = 'Bank Nifty Option Instruments Subscribed :\n'+bankNiftyOptionsNameString
             insrumentListLogger(msg)
-
-            #Create database where daily ticks will be stored.
-            #They will be moved to a backup database/table at the end of the day       
-            c.execute(f"CREATE DATABASE IF NOT EXISTS {bankNiftyOptions_daily_DBName}")
-            
-            #Reading BankNifty Option instruments table names 
-            bankNiftyOptionsInstrumentTables = bankNiftyOptionsDF['TableName'].values.tolist()
-
-            for tableName in bankNiftyOptionsInstrumentTables:
-                c.execute(f"CREATE TABLE IF NOT EXISTS {bankNiftyOptions_daily_DBName}.`{tableName}` \
-            	(timestamp DATETIME UNIQUE,price DECIMAL(19,2), qty INT UNSIGNED, avgPrice DECIMAL(19,2), volume BIGINT,\
-                bQty INT UNSIGNED, sQty INT UNSIGNED, open DECIMAL(19,2), high DECIMAL(19,2), low DECIMAL(19,2), close DECIMAL(19,2),\
-            	changeper DECIMAL(60,10), lastTradeTime DATETIME, oi INT, oiHigh INT, oiLow INT, \
-            	bq0 INT UNSIGNED, bp0 DECIMAL(19,2), bo0 INT UNSIGNED,\
-            	bq1 INT UNSIGNED, bp1 DECIMAL(19,2), bo1 INT UNSIGNED,\
-            	bq2 INT UNSIGNED, bp2 DECIMAL(19,2), bo2 INT UNSIGNED,\
-            	bq3 INT UNSIGNED, bp3 DECIMAL(19,2), bo3 INT UNSIGNED,\
-            	bq4 INT UNSIGNED, bp4 DECIMAL(19,2), bo4 INT UNSIGNED,\
-            	sq0 INT UNSIGNED, sp0 DECIMAL(19,2), so0 INT UNSIGNED,\
-            	sq1 INT UNSIGNED, sp1 DECIMAL(19,2), so1 INT UNSIGNED,\
-            	sq2 INT UNSIGNED, sp2 DECIMAL(19,2), so2 INT UNSIGNED,\
-            	sq3 INT UNSIGNED, sp3 DECIMAL(19,2), so3 INT UNSIGNED, \
-            	sq4 INT UNSIGNED, sp4 DECIMAL(19,2), so4 INT UNSIGNED)")
-                    
-            msg = 'DAS - BankNifty Options Lookup Table Creation Successful'
-            lookupTableCreatorLogger(msg)  
-            c.close()
-            conn.close()
             return True
         except Exception as e:
             msg = f"Instrument Token Lookup Table Creator - BankNifty Options - failed with exception {e}. Traceback : {str(traceback.format_exc())}"
@@ -484,25 +393,74 @@ def lookupTablesCreatorBankOptions():
         =========================================
         '''          
 def lookupTablesCreator():    
-        if isDasConfigDefault():
-            msg = 'DAS Config has defaults. accessTokenReq is exiting'
-            lookupTableCreatorLogger(msg)
-            DAS_errorLogger(msg)
-            return False
-        else:
-            n500TablesCreated = lookupTablesCreatorNifty500()
-            niftyOptionsTablesCreated = lookupTablesCreatorNiftyOptions()
-            bankOptionsTablesCreated = lookupTablesCreatorBankOptions()     
+    if isDasConfigDefault():
+        msg = 'DAS Config has defaults. accessTokenReq is exiting'
+        lookupTableCreatorLogger(msg)
+        DAS_errorLogger(msg)
+        return False
+    #On failure, function would have exited at the False return.
+    #Hence no Else required here
+    n500TablesCreated = lookupTablesCreatorNifty500()
+    niftyOptionsTablesCreated = lookupTablesCreatorNiftyOptions()
+    bankOptionsTablesCreated = lookupTablesCreatorBankOptions()
     
-            if n500TablesCreated and niftyOptionsTablesCreated and bankOptionsTablesCreated:
-                msg = 'DAS - All Lookup Table Creation Activities Successful'
-                lookupTableCreatorLogger(msg)          
-                return True
-            else:
-                msg = 'One or more Lookup Table Creation Activities FAILED!!!'
-                lookupTableCreatorLogger(msg)  
-                DAS_errorLogger('lookupTablesCreator - '+msg)
-                return False
+    if not all([n500TablesCreated, niftyOptionsTablesCreated, bankOptionsTablesCreated]):
+        msg = 'One or more Lookup Table Creation Activities FAILED!!!'
+        lookupTableCreatorLogger(msg)  
+        DAS_errorLogger('lookupTablesCreator - '+msg)
+        return False   
+        
+    if n500TablesCreated and niftyOptionsTablesCreated and bankOptionsTablesCreated:
+        #Create {nifty500DBName}
+        conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
+        c = conn.cursor() 
+        c.execute(f'CREATE DATABASE IF NOT EXISTS {nifty500DBName}')
+        
+        ##Create Daily table - {nifty500DBName}.{dailyTableName} 
+        
+        c.execute(f'''
+                    CREATE TABLE IF NOT EXISTS {nifty500DBName}.{dailyTableName} (
+                        instrument_token BIGINT(20), 
+                        tradingsymbol VARCHAR(100),
+                        tablename VARCHAR(100),
+                        dbname VARCHAR(100),
+                        timestamp DATETIME, price DECIMAL(19,2), 
+                        qty INT UNSIGNED,
+                        avgPrice DECIMAL(19,2),
+                        volume BIGINT,
+                        bQty INT UNSIGNED,
+                        sQty INT UNSIGNED,  
+                        open DECIMAL(19,2),
+                        high DECIMAL(19,2),
+                        low DECIMAL(19,2),
+                        close DECIMAL(19,2),
+                        changeper DECIMAL(60,10),
+                        lastTradeTime DATETIME,
+                        oi INT,
+                        oiHigh INT,
+                        oiLow INT,  
+                        bq0 INT UNSIGNED, bp0 DECIMAL(19,2), bo0 INT UNSIGNED,
+                        bq1 INT UNSIGNED, bp1 DECIMAL(19,2), bo1 INT UNSIGNED,
+                        bq2 INT UNSIGNED, bp2 DECIMAL(19,2), bo2 INT UNSIGNED,
+                        bq3 INT UNSIGNED, bp3 DECIMAL(19,2), bo3 INT UNSIGNED,
+                        bq4 INT UNSIGNED, bp4 DECIMAL(19,2), bo4 INT UNSIGNED,  
+                        sq0 INT UNSIGNED, sp0 DECIMAL(19,2), so0 INT UNSIGNED,
+                        sq1 INT UNSIGNED, sp1 DECIMAL(19,2), so1 INT UNSIGNED,                    
+                        sq2 INT UNSIGNED, sp2 DECIMAL(19,2), so2 INT UNSIGNED,                    
+                        sq3 INT UNSIGNED, sp3 DECIMAL(19,2), so3 INT UNSIGNED,                    
+                        sq4 INT UNSIGNED, sp4 DECIMAL(19,2), so4 INT UNSIGNED,
+                        UNIQUE (instrument_token, timestamp),
+                        INDEX tablenameindex (tablename),
+                        INDEX symbolindex (tradingsymbol),
+                        INDEX instrument_token_index (instrument_token),
+                        INDEX timestamp_index (timestamp)
+                    )''')
+        
+        msg = 'DAS - All Lookup Table Creation Activities Successful'
+        lookupTableCreatorLogger(msg)          
+        return True
+    #Catch all
+    return False
     
 if __name__ == '__main__':
     lookupTablesCreator()

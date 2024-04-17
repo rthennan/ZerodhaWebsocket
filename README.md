@@ -1,6 +1,17 @@
 # Zerodha Websocket for Nifty500, Nifty Options and BankNifty Options
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
-DAS - Data Acquisition System. That is what I am calling it.
+
+Highlights:
+ - Automates entire pipeline including daily login for Zerodha API app.
+ - Dynamically gets the latest Nifty 500 list and weekly options for current and next week for Nifty and Bank Nifty
+ - The Nifty 500 list is maintained and **appended** locally.  
+   - When the Nifty 500 list is updated by NSE, only additions are updated in the local list. If a stock is removed from Nifty 500, the code still retains it and tries subscribing to it.
+   - This also allows you to add additional instruments that may or may not be part of the Nifty 500 to the lookup list.
+- Checks for trading holidays every day and shuts down if it is an NSE trading holiday.
+- The only maintenance required is to ensure there is adequate storage available for the database.
+
+**DAS** - Data Acquisition System. That is what I am calling it.
+
 
 ## **Contents:**  
 ### **[1. Pre-requisites](#pre-requisites)**
@@ -8,10 +19,10 @@ DAS - Data Acquisition System. That is what I am calling it.
 ### **[3. OS Supported](#os-supported)**
 ### **[4. Setup/Installation](#setupinstallation-)**
    - **4.1 Install Python3**
-   - **4.2 Install MySQL / MariaDB Server**
-   - **4.3 MySQL Client**
+   - **4.2 Install MySQL/MariaDB Server**
+   - **4.3 MySQL/MariaDB Client**
    - **4.4 Install Google Chrome**
-   - **4.5 Install the MySQL client packages at the OS level. Else, pip install will fail for mysqlclient**
+   - **4.5 Install the MySQL/MariaDB client packages at the OS level. Else, pip install will fail for mysqlclient**
    - **4.6 Download / Clone this repo**
    - **4.7 [Update dasConfig.json](#2-update-dasconfigjson)**
    - **4.8 Customize lookupTables > lookupTables_Nifty500.csv with additional instruments**
@@ -25,33 +36,27 @@ DAS - Data Acquisition System. That is what I am calling it.
 ### **[8. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
 ### **[9. Changelog](#changelog)**
    - **[2024-03-27](#2024-03-27)**
+   - **[2024-04-11](#2024-04-11)**   
+### **[11. Performance Tweaks](##performance-tweaks)** 
 ### **[10. Raise Issues](##raise-issues)**     
 
 
 
  ### **Pre-requisites:**
-- An active subscription for at least one [Kite Connect API](https://developers.kite.trade/apps) app.
+- Active subscription for one [Kite Connect API](https://developers.kite.trade/apps) app.
 - Python3
-- MySQL / MariaDB Server
+- MySQL/MariaDB Server
 - Gmail account with App password configured - [Sign in with app passwords](https://support.google.com/mail/answer/185833?hl=en)
 - Zerodha, Gmail and MySQL credentials have to be filled in the dasConfig.json file
-  - Storing passwords and keys in a plaintext file is a potential security issue.
+  - Storing passwords and keys in a plaintext file poses a potential security risk.
   - This is used for simplicity. Please consider switching to more secure secret management options (like environment variables) for production deployments.
-  - All calls for reading dasConfig.json and using the json would have to be updated.
-- **IMPORTANT - Disk Throughput**
-      - Kite ticker will only send data when there are changes in one or more fields in an instrument.  
-      - So, it is unlikely that all subscribed instruments will get tick data every second, as some might be less active.  
-      - But a conservative approach would be to assume that all subscribed instruments get data every second.  
-      - This means around 1300 tables in the DB are constantly updated.  
-      - So keep an eye on the Disk I/O wait times to see if there are bottlenecks.
-  
+  - All calls for reading dasConfig.json and using the json would have to be updated.  
  
 ### **Tools/Packages primarily used:**
-- Pandas - For handling CSV and Excel Files
+- Pandas - For storing ticks and handling CSV Files
 - Selenium - Automate Kite Authentication and getHolidayList from NSE
-- MySQLdb/MariaDB for persistent store of ticker data
-- numpy - Used to save token lists and dictionaries for ticker subscriptions and stores. Pickle could have been used
-- shutil - handling files
+- MySQL/MariaDB for persistent store of ticker data
+- numpy - Mainly used to save token lists and dictionaries for ticker subscriptions and stores. Pickle could have been used
 - smtplib - Mail notification using Gmail
 - pyotp - for generating TOTP required for Zerodha authentication
 - json - for storing and accessing credentials, API keys, etc. (dasConfig.json)
@@ -63,7 +68,7 @@ DAS - Data Acquisition System. That is what I am calling it.
 
 ### Setup/Installation :
 - Install Python3
-- Install MySQL / MariaDB Server
+- Install MySQL/MariaDB Server
 - MySQL Client
     -   For Windows: https://stackoverflow.com/questions/34836570/how-do-i-install-and-use-mysqldb-for-python-3-on-windows-10
     -   For Linux  
@@ -103,7 +108,7 @@ Update the rest as required.
   -   Client and Client API credentials from Zerodha.
   -   Default values - **Invalid**
 - `mysqlHost`, `mysqlUser`, `mysqlPass` :
-  -   MariaDB / MySQLDB connection details.
+  -   MySQL/MariaDB  connection details.
   -   Default values - **Invalid**
 - `mysqlPort` :
   -   Update this if your DB Server runs in a port other than the default 3306.
@@ -111,8 +116,7 @@ Update the rest as required.
   -   Default value - 3306 - **Valid**
 - `accessTokenDBName`, `nifty500DBName`, `niftyOptionsDBName` and `bankNiftyOptionsDBName` :
   -   Names used for DBs that will be created for storing the access tokens and tick data
-  -   For tick data, a **daily** database, with suffix _daily will be created.
-  -   The daily databases will then be dumped to corresponding main databases without the _daily suffix.
+  -   Live tick data will first be stored in a table called `dailytable` in `nifty500DBName`.
   -   You can store all the tables in the same database, as there are no conflicts in the Table Names.
       -   i.e., you can use the same DB Name value for all four fields, and the code will run without issues.
       -   I prefer differentiating these databases for various purposes.
@@ -124,6 +128,8 @@ Update the rest as required.
   -   This is helpful when you want to test the program and stop the ticker at a different time.
   -   You can perform such testing without disturbing the actual code
   -   Default values - `15` and `35` - 3:35 p.m. - **Valid**
+- `backupWorkerCount`:
+  - Number of parallel workers used by DAS_dailybackup. Default value - 4 - **Valid**
 #### 3. Customize lookupTables > lookupTables_Nifty500.csv with additional instruments
   - The lookupTables directory **WILL NOT** be downloaded as it is included in .gitignore. This is to ensure you do not accidentally overwrite any customization when you pull changes from the Repo
   - If you want to add instruments to the lookup, run `python lookupTablesCreator.py` after updating dasConfig.json to let the script create the file.
@@ -163,7 +169,7 @@ Update the rest as required.
         - Returns True if success. Else False.
         - On Failure :
             - Check if the acccesstoken in the DB was updated after 08:00 today.
-                - You could have used manualAccessTokenReq(more on this later) or update the token some other way
+                - You could have used manualAccessTokenReq(more on this later) or updated the token some other way
             - If it is fresh, return True but log error and mail
             - Else, retry after 30 seconds - Tries this 5 times
   3. nifty500Updater.py
@@ -185,37 +191,40 @@ Update the rest as required.
         - 4.1 lookupTablesCreatorNifty500
             - Lists instrument_token for lookupTables_Nifty500.csv and saves it as nifty500TokenList.csv
             - Saves instrument_token for Indexes indexTokenList.csv
-            - Creates and Saves instrument_token:TableName dictionary nifty500TokenTable.npy - Used by ticker to identify which DB, Table and SQL statement should be used to store the tick data
-            - Creates {nifty500DBName}_daily Database and Tables Nifty 500 Instruments
+            - Creates and Saves instrument_token:TableName dictionary nifty500TokenTableDict.npy - Used by DAS_Ticker to identify DB, Table and tradingsymbol while before storing ticks.
         - 4.2 lookupTablesCreatorNiftyOptions
             - Finds current and next weekly expiry dates for Nifty Options
             - Saves instrument_token list for all Nifty Option instruments for those two expiries as niftyOptionsTokenList.csv
-            - Creates and Saves instrument_token:TableName dictionary niftyOptionsTokenTable.npy
-            - Creates {niftyOptionsDBName}_daily Database and Tables for Nifty Option Instruments
+            - Creates and Saves instrument_token:TableName dictionary niftyOptionsTokenTableDict.npy
         - 4.3 lookupTablesCreatorBankOptions
             - Same for BankNifty Options
             - Save instrument_token list bankNiftyOptionsTokenList.csv
-            - instrument_token:TableName dictionary bankNiftyOptionsTokenTable.npy
-            - Creates {bankNiftyOptionsDBName}_daily Database and Tables for BankNifty Option Instruments      
+            - instrument_token:TableName dictionary bankNiftyOptionsTokenTableDict.npy   
+        - 4.4 Create DB `{nifty500DBName}` and dailytable            
         - Returns True if success. Else False.
-  5. DAS_Ticker.py (run async using multiprocessing)
+  5. DAS_Ticker.py
        - Will only proceed if all the previous steps returned True. tradeHolidayCheck should have returned False.
-       - Logs in to Kite with the latest access token found in {accessTokenDBName}.kite1tokens
+       - Accepts marketCloseHour and marketCloseMinute
+       - Starts a countdown timer for self-destruction.
+       - Logs into Kite with the latest access token found in {accessTokenDBName}.kite1tokens
        - Gets instrument_tokens from nifty500TokenList.csv, indexTokenList.csv, niftyOptionsTokenList.csv and bankNiftyOptionsTokenList.csv in the lookupTables directory.
        - Subscribes to all of them in FULL mode
-       - Uses nifty500TokenTable.npy, niftyOptionsTokenTable.npy and bankNiftyOptionsTokenTable.npy to identify the tables to which the tick data should be stored
-       - Uses different SQL statements for Indexes and the rest of the instruments as Index ticks have fewer columns.
-  6. DAS_Killer.py > killer
-       - Count-down timer that runs till `marketCloseHour` and `marketCloseMinute`
-       - Once this completes, the execution flow is back to DAS_main, killing the DAS_Ticker process
+       - Receives ticks from Zerodha Websocket.
+       - Adds tradingsymbol, tablename and databasename to the ticks and stores them into `{nifty500DBName}`.dailytable.
+       - Roughly based on the last suggestion in this discussion - [Delay is websocket streaming
+](https://kite.trade/forum/discussion/1674/delay-is-websocket-streaming). I haven't implemented the queue/multi-threaded approach for DB store as I use `REPLACE INTO` to maintain unique timestamps and combining this with multithreading results in deadlocks.
+       - See changelog **[2024-04-11](#2024-04-11)** for query examples for dailytable
   7. DAS_dailyBackup.py
-       - Checks and reports if any of the tables in lookupTables_Nifty500.csv are empty at the end of the day.
+       - Checks and reports if any of the tokens in lookupTables_Nifty500.csv did not receive any ticks by the end of the day.
            - This indicates that the corresponding symbol has potentially changed or has been delisted
-       - Creates main databases {nifty500DBName}, {niftyOptionsDBName} and {bankNiftyOptionsDBName} . (No _daily suffix)
-       - Copies all tables from the _daily databases to their corresponding main database and drops the tables in the _daily DBs
+       - Creates main databases {nifty500DBName}, {niftyOptionsDBName} and {bankNiftyOptionsDBName}.
+       - Creates individual tables for all the instrument_tokens in the daily table.
+       - Splits and store ticks from the daily table into the individual tables
        - Reports about backup failures.
+       - Drops dailytable if all backups were successful.
        - End of DAS_main
        - Returns True if success. Else False.
+       - **NOTE**: I feel DAS_dailyBackup is sub-optimal but couldn't find any other way. Please feel free to raise a PR or even an issue if you have a better appraoch for splitting dailytable into the individual tables.
 - Other functions used by DAS_main and sub-modules                 
     - DAS_gmailer.py
         - Used to report start, completion and failures in DAS_main
@@ -227,14 +236,13 @@ Update the rest as required.
         - But DAS_errorLogger is called on all failures, logging any failure from any function in DAS_Errors_yyyy-mm-dd.log
         - It also prints the error in Red (I hope)
 - manualAccessTokenReq.py
-    - The only automation failure I have faced in the past (almost) 4 years for this automation is when Zerodha makes changes in their Login Page
+    - The only automation failure I have faced in the past (almost) 4 years for this project is when Zerodha makes changes in their Login Page
     - This breaks the Selenium automation used for accessTokenreq
-    - On a few occasions, I have been able to fix the error and rerun accessTokenreq before the markets open.
-    - One of the reasons I had split accessTokenreq to be standalone in the previous version of the project.
-    - However, updating accessTokenreq to adapt to changes before the market opens is only sometimes feasible.
-    - In such cases, run manualAccessTokenReq.py to manually login to the kiteconnect URL and paste the response URL
+    - One of the reasons I had split accessTokenreq to be standalone in the previous version of the project => Fix, Test ,Repeat.
+    - In a few occasions, I was able to fix the error and rerun accessTokenreq before the markets open.
+    - But if you can't fix accessTokenreq before market hours, run manualAccessTokenReq.py to manually login to the kiteconnect URL and paste the response URL
     - manualAccessTokenReq will then get the accesstoken using the requestToken in the URL you provided
-    - accesstokenreq will return True if the accestoken is fresh (generated after 08:00 a.m. today)
+    - If you run DAS_main after this, accesstokenreq will return True if the accestoken is fresh (generated after 08:00 a.m. today) and will
     - In short, on automation failure, you can run manualAccessTokenReq and then rerun das_main
 
 #### Functions outside the scope of DAS_main that I use and are completely optional:
@@ -260,15 +268,15 @@ Update the rest as required.
            
   
 ### **Automation I use outside the provided code:**
-- I run the whole thing in an AWS EC2 machine (~~m5.large~~ c6a.xlarge)
+- I run the whole thing in an AWS EC2 machine (~~m5.large~~ ~~c6a.xlarge~~ ~~c6a.large~~ t3a.medium) with EBS type gp3 (3000 IOPS)
 - I've set up an AWS Lambda function (EventBridge—CloudWatch Events) to start the machine every weekday at 08:30 IST.
-- It could start a bit late, even at 09:10 and then DAS_main.py. But starting the machine and DAS_main a bit earlier, in case Zerodha or some other component in the pipeline has some breaking change that the code has to adapt to.
+- It could start a bit late, even at 09:10 and then DAS_main.py. But I am starting the machine and DAS_main a bit earlier, in case Zerodha or some other component in the pipeline has some breaking change that the code has to adapt to.
   - Instead of running the Python code directly, I have wrapped them inside bash scripts that perform the following:
   - Change directories if needed
   - Start named [tmux](https://github.com/tmux/tmux/wiki) sessions and log the screen output. 
   - Run the corresponding Python code.
     - The named tmux sessions allow me to connect to the machine and switch to the specific job if needed.
-    - I am logging the screen (stdout) output in case the websocket or some other part of the code spits or does something that isn't exactly an exception
+    - I am logging the screen (stdout) output in case the websocket or some other part of the code spits out or does something that isn't exactly an exception and hence hasn't been captured by the custom loggers.
     - Startup script I use for DAS_main:
         - startDasMain.sh:
 
@@ -289,6 +297,23 @@ This has to be done cause AWS EBS is expensive compared to local storage (duh!),
 Though I have automated parts of this process (dump in AWS, SCP from Local, import in local, disaster recovery backup to Deep Archive), it has to be triggered manually as the local machine and the EC2 instance might not be running at the same time.
 
 ### Changelog:
+  #### <ins>**2024-04-11**</ins>:
+  - DAS_Ticker - Live tick data is now stored into one table for all ticks. This was to reduce the DB and disk overhead(IOPS) from looping through each tick and storing it in the respective table.
+  - The loop and store approach required 1000+ IOPS. This has  been brought down to ~300 IOPS
+  - This means querying for a symbol during market hours has to be done differently.
+  - Table:
+    {nifty500DBName}.dailytable
+  - Example queries to get data from live DB (live Ticks):
+      - SELECT timestamp, price FROM dailytable WHERE tradingsymbol='NIFTY 50' order by timestamp DESC LIMIT 5;
+      - SELECT timestamp, price FROM dailytable WHERE tablename='NIFTY' order by timestamp DESC LIMIT 5;
+      - SELECT instrument_token, timestamp, price, volume FROM dailytable WHERE tradingsymbol='NIFTY24APRFUT' order by timestamp DESC LIMIT 5;
+      - SELECT timestamp, price, volume FROM dailytable WHERE tablename='NIFTYFUT' order by timestamp DESC LIMIT 5;
+      - SELECT timestamp, price, volume FROM dailytable WHERE instrument_token=13368834 order by timestamp DESC LIMIT 5;
+  - nifty500DBName configured in dasConfig.json  
+  - tradingsymbol, tablename, instrument_token and timestamp columns have indexes in the Table.
+  - After marketclose, data from dailytable is copied over to indidvidual tables, filtering on the instrument_token.
+  - DAS_Ticker now accepts marketcloseHour and Minute. Killer no longer required and has been removed.  
+
   #### <ins>**2024-03-27**</ins>:
    - Major revamp of the entire project
    - <ins>**Breaking Changes for existing users**</ins>
@@ -312,14 +337,34 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
    - Database names, MySQL port numbers and market close times are now customizable through dasConfig.json
    - The trading holiday list is fetched dynamically on every run
    - Weekly expiry dates for Nifty and BankNifty are fetched dynamically from the Zerodha Instrument dump and don't rely on the tradingHolidays list any more.
-   - No longer disconnecting and updating weekly options list to handle huge moves in Indexes
+  - No longer disconnecting and updating weekly options list to handle huge moves in Indexes
    - Fetching ALL instruments for NIFTY and BANKNIFTY weekly options (current and next week) as opposed to a shortlist earlier
    - nifty500Updater ensures all new Nifty500 instruments are added to the ticker automatically
-   - Removes maintenance activities that were earlier required for maintaining the latest Nifty 500 Instrument and trading holiday list
+   - Removed manual toil that was earlier required for maintaining the latest Nifty 500 Instrument list and trading holiday list
+
+### Performance Tweaks:
+  - Kite ticker sends ticks as lists of dictionaries.
+  - For each batch, DAS_Ticker 
+    - converts the list of dictionaries into a Pandas DF
+    - preprocesses a bit like generalizing Index ticks to match FULL structure (2 columns vs 47)
+    - Adds a couple of columns that will be useful for querying
+    - Inserts into a dailytable using a custom DF.to_sql method.
+  - This is done in batches as received and needs ~ 300 IOPS 
+  - So keep an eye on the Disk I/O wait times to see if there are bottlenecks. If there are, you are likley to see a lag in the ticks stored in the daily table.  
+  - Use something like the below query to check for lags DURING MARKET hours. 
+  - `SELECT timestamp, instrument_token, tradingsymbol, price from dailytable order by timestamp desc limit 1; SELECT NOW();` There shouldn't be more than a couple of seconds of difference between the timestamp for the latest entry in DB and the current time.
+   - Time taken by DAS_dailybackup depends on multiple factors like CPU speed, Memory, Disk I/O limits and throughput. Increasing `backupWorkerCount` wouldn't magically improve performance. 
+   - Play around with the following config params in your MySQL/MariaDB config to find the optimal values for DAS_Ticker and DAS_dailybackup:
+      - innodb_buffer_pool_size
+      - innodb_io_capacity
+      - innodb_io_capacity_max
+      - innodb_thread_concurrency
+      - innodb_flush_log_at_trx_commit
+  - DAS_Ticker stores the DBName and Tablename in along with the ticks into `{nifty500DBName}`.dailytable . This is currently not useful for any of the operations (as on 2024-04-17). I have added them there for now, in case I figure out a better approach for DAS_dailybackup .
 
 ### Raise Issues:
-I try to catch up with breaking changes from Zerodha or NSE as soon as possible, as I use the same code daily, and it would also fail.  
-However, my updates weren't fast enough on subtle changes on a few occasions.  
+- I try to catch up with breaking changes from Zerodha or NSE as soon as possible, as I use the same code daily, and my code would also fail.  
+- However, my updates weren't fast enough on subtle changes in a few occasions.  
 For example, I failed to notice the expiry date changes in BankNifty (Thur to Wed) for almost a month in September 2023.  
-So, if you use this project and come across some change in NSE or Zerodha that might affect the data acquisition in any way, do not hesitate to create an issue in this repo. I'll address it if applicable or let you know if it is irrelevant.  
-Feel free to [contact me](https://www.linkedin.com/in/rthennan) for any questions. 
+- So, if you use this project and come across some change in NSE or Zerodha that might affect the data acquisition in any way, do not hesitate to create an issue in this repo. I'll try to address it if applicable or let you know if it is irrelevant.  
+- Feel free to [contact me](https://www.linkedin.com/in/rthennan) for any questions. 

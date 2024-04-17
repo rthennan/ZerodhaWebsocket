@@ -16,5 +16,6 @@
     "niftyOptionsDBName" : "aws_das_niftyopt",
     "bankNiftyOptionsDBName" : "aws_das_bankopt",
     "marketCloseHour" : 15,
-    "marketCloseMinute" : 35
+    "marketCloseMinute" : 35,
+    "backupWorkerCount" : 4
 }

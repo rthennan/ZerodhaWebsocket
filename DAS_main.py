@@ -15,7 +15,7 @@ from accessTokenReq import accessTokenReq
 from nifty500Updater import nifty500Updater
 from lookupTablesCreator import lookupTablesCreator
 from DAS_Ticker import DAS_Ticker
-from DAS_Killer import killer
+
 import traceback
 from DAS_dailyBackup import DAS_dailyBackup
 from DAS_gmailer import DAS_mailer
@@ -102,43 +102,21 @@ if __name__ == '__main__':
             sys.exit()    
         #An else would do here. But doing elif just in case and why not?
         elif (not isTradingHoliday) and accessTokenSuccess and nifty500updateSuccess and lookupTableCreationSuccess:
-            msg = f'lookupTablesCreator succeeded. All Pre-checks passed. Proceeding wtih DAS ticker at {str(dt.now())[:19]}'
+            msg = f'All Pre-checks passed. Calling DAS ticker with close time {dt.now().replace(hour=marketCloseHour, minute=marketCloseMinute, second=0, microsecond=0)}'
             dasMainlogger(msg)
-            
-            DAS_ticker_process = multiprocessing.Process(target=DAS_Ticker)
-            DAS_ticker_process.start()
-            msg = f'All Preparation steps and prechecks completed successfully. Proceeding wtih DAS ticker.\nTicker will be closed at {dt.now().replace(hour=marketCloseHour, minute=marketCloseMinute, second=0, microsecond=0)}'
             DAS_mailer(f'DAS Main - Ticker Started at {str(dt.now())[:19]}',msg)
-            #DAS_ticker_process is started as a parallel thread.
-            #killer is a countdown timer that runs in parallel with the ticker.
-            #When this script is over, the actual ticker is killed and backup operations are called
-            killer(marketCloseHour,marketCloseMinute)
-            ### Killing Ticker ###        
-            try:
-                DAS_ticker_process.terminate()
-                tickerClosed =True
-            except Exception as e:
-                msg = f"DAS Main - Exception: DAS_ticker_process couldn't be stopped. Exception : {e}.\Traceback :{str(traceback.format_exc())}"
-                DAS_mailer('DAS ticker could not be stopped',msg)
+            DAS_Ticker(marketCloseHour,marketCloseMinute)
+            msg = 'DAS_Ticker done for the day Successfully. Proceeding to Backup'
+            dasMainlogger(msg)
+            #You are here
+            backupStatus = DAS_dailyBackup()
+            if backupStatus:
+                msg="DAS - All Activities for the day have been completed."
+                dasMainlogger(msg)
+            else:
+                msg="DAS Main - DAS_dailyBackup reported failure. Check logs thoroughly."
                 dasMainlogger(msg)
                 DAS_errorLogger(msg)
-            if not tickerClosed:
-                msg = "DAS Main - DAS_ticker_process couldn't be stopped. Exiting execution. Check logs for more details"
-                DAS_mailer('DAS ticker could not be stopped',msg)
-                DAS_errorLogger(msg)
-                dasMainlogger(msg)
-            elif tickerClosed:
-                msg = 'Ticker stopped Successfully. Proceeding to Backup'
-                dasMainlogger(msg)
-                #You are here
-                backupStatus = DAS_dailyBackup()
-                if backupStatus:
-                    msg="DAS - All Activities for the day have been completed."
-                    dasMainlogger(msg)
-                else:
-                    msg="DAS Main - DAS_dailyBackup reported failure. Check logs thoroughly."
-                    dasMainlogger(msg)
-                    DAS_errorLogger(msg)
     except Exception as e:
         msg = f'DAS Main Failed. Exception : {e}. Traceback :  {str(traceback.format_exc())}'  
         dasMainlogger(msg)

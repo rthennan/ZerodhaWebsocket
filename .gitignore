@@ -4,3 +4,10 @@ tradingHolidays.csv
 /blankNifty500Tables
 dasConfig_cust.json
 /lookupTables
+dasConfig_template.json
+backupJobTweak.txt
+/backupFailedTables
+backupMonotir.jpg
+cleanDBRows.py
+Logs/backupLogAnalyzer.py
+/Logs

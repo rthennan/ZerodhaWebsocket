@@ -72,22 +72,28 @@ def accessTokenLogger(txt):
         f.write(logMsg)
 
 def isAccessTokenInDBFresh():
-    #Get latest access token's timestamp from DB
-    conne = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, db=accessTokenDBName, port=mysqlPort)
-    ce = conne.cursor()
-    ce.execute('select timestamp from kite1tokens order by timestamp desc limit 1')
-    accTokenLatestTimeStamp = str(ce.fetchone()[0])
-    ce.close()
-    conne.close()  
-    # Parse the string to a datetime object
-    accTokenLatestTimeStamp = dt.strptime(accTokenLatestTimeStamp, '%Y-%m-%d %H:%M:%S')
-    
-    # Create a datetime object for today at 08:00 a.m.
-    # Replace the hour, minute, second, and microsecond to get today at 08:00 a.m.
-    today8AM = dt.now().replace(hour=8, minute=0, second=0, microsecond=0)
-    
-    #Was accessToken generated after 08:00 today?
-    return accTokenLatestTimeStamp > today8AM
+    try:
+        #Get latest access token's timestamp from DB
+        conne = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, db=accessTokenDBName, port=mysqlPort)
+        ce = conne.cursor()
+        ce.execute('select timestamp from kite1tokens order by timestamp desc limit 1')
+        accTokenLatestTimeStamp = str(ce.fetchone()[0])
+        ce.close()
+        conne.close()  
+        # Parse the string to a datetime object
+        accTokenLatestTimeStamp = dt.strptime(accTokenLatestTimeStamp, '%Y-%m-%d %H:%M:%S')
+        
+        # Create a datetime object for today at 08:00 a.m.
+        # Replace the hour, minute, second, and microsecond to get today at 08:00 a.m.
+        today8AM = dt.now().replace(hour=8, minute=0, second=0, microsecond=0)
+        
+        #Was accessToken generated after 08:00 today?
+        return {'status':accTokenLatestTimeStamp > today8AM,'tstamp':accTokenLatestTimeStamp}
+    except Exception as e:     
+        msg = f'Exception in isAccessTokenInDBFresh  -> {e}. Traceback : {traceback.format_exc()}'
+        DAS_errorLogger(msg)
+        accessTokenLogger(msg) 
+        return {'status':False > today8AM,'tstamp':accTokenLatestTimeStamp}        
     
 
 def accessTokenReq():    
@@ -191,11 +197,13 @@ def accessTokenReq():
                 DAS_errorLogger(msg)
                 accessTokenLogger(msg)
                 availableTokenGood = isAccessTokenInDBFresh()
-                if availableTokenGood:
-                    msg = 'Access token available in DB is Fresh. Will use it for the ticker.\n But see why accessTokenReq failed in the first place'
+                #{'status':accTokenLatestTimeStamp > today8AM,'tstamp':accTokenLatestTimeStamp}
+                if availableTokenGood['status']:
+                    tokenFetchTime = availableTokenGood['tstamp']
+                    msg = f'Access token available in DB is Fresh.\nFetched at {tokenFetchTime}.\nWill use it for the ticker.\n But see why accessTokenReq failed in the first place'
                     DAS_errorLogger(msg)
                     accessTokenLogger(msg) 
-                    DAS_mailer('DAS - accessTokenReq FAILED!!!. Using latest token from Today',f'Check DAS_accessToken_Logs_{str(date.today())}.log to see why it failed and troubleshoot if the issue is not transient')
+                    DAS_mailer(f'DAS - accessTokenReq FAILED!!!. Using latest token from Today at {tokenFetchTime}',f'Check DAS_accessToken_Logs_{str(date.today())}.log to see why it failed and troubleshoot if the issue is not transient')
                     return True
                 else:
                     msg = '\nAccess token in DB is not fresh.\nRun manualAccessTokenReq.py if possible.\nWill retry accessTokenReq in 30 seconds'
