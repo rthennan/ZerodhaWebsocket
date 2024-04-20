@@ -1,8 +1,8 @@
 # Zerodha Websocket for Nifty500, Nifty Options and BankNifty Options
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
 
-Highlights:
- - Automates entire pipeline including daily login for Zerodha API app.
+**Highlights:**
+ - Automates the entire pipeline including daily login for Zerodha API app.
  - Dynamically gets the latest Nifty 500 list and weekly options for current and next week for Nifty and Bank Nifty
  - The Nifty 500 list is maintained and **appended** locally.  
    - When the Nifty 500 list is updated by NSE, only additions are updated in the local list. If a stock is removed from Nifty 500, the code still retains it and tries subscribing to it.
@@ -37,8 +37,8 @@ Highlights:
 ### **[9. Changelog](#changelog)**
    - **[2024-03-27](#2024-03-27)**
    - **[2024-04-11](#2024-04-11)**   
-### **[11. Performance Tweaks](##performance-tweaks)** 
-### **[10. Raise Issues](##raise-issues)**     
+### **[10. Performance Tweaks](#performance-tweaks)** 
+### **[11. Raise Issues](#raise-issues)**     
 
 
 
@@ -129,7 +129,11 @@ Update the rest as required.
   -   You can perform such testing without disturbing the actual code
   -   Default values - `15` and `35` - 3:35 p.m. - **Valid**
 - `backupWorkerCount`:
-  - Number of parallel workers used by DAS_dailybackup. Default value - 4 - **Valid**
+  - Number of parallel workers used by DAS_dailybackup. 
+  Actul code DAS_dailybackup does `min(dasConfig['backupWorkerCount'],cpu_count())` to avoid allocating more number of works than the number of CPU cores.  
+  Using excess number of threads fails in some CPU archs, skipping the multithreaded job completely.  
+  Example: AWS EC2 instances with burstable CPU and CPU credit specification set to unlimited.  
+  Default value - 4 - **Valid**
 #### 3. Customize lookupTables > lookupTables_Nifty500.csv with additional instruments
   - The lookupTables directory **WILL NOT** be downloaded as it is included in .gitignore. This is to ensure you do not accidentally overwrite any customization when you pull changes from the Repo
   - If you want to add instruments to the lookup, run `python lookupTablesCreator.py` after updating dasConfig.json to let the script create the file.
@@ -224,7 +228,7 @@ Update the rest as required.
        - Drops dailytable if all backups were successful.
        - End of DAS_main
        - Returns True if success. Else False.
-       - **NOTE**: I feel DAS_dailyBackup is sub-optimal but couldn't find any other way. Please feel free to raise a PR or even an issue if you have a better appraoch for splitting dailytable into the individual tables.
+       - **NOTE**: I feel DAS_dailyBackup has sub-optimal peformance but couldn't find a better way other than increasing CPU/Memory. Please feel free to raise a PR or even an issue if you have a better approach for splitting dailytable into the individual tables.
 - Other functions used by DAS_main and sub-modules                 
     - DAS_gmailer.py
         - Used to report start, completion and failures in DAS_main
@@ -299,7 +303,7 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
 ### Changelog:
   #### <ins>**2024-04-11**</ins>:
   - DAS_Ticker - Live tick data is now stored into one table for all ticks. This was to reduce the DB and disk overhead(IOPS) from looping through each tick and storing it in the respective table.
-  - The loop and store approach required 1000+ IOPS. This has  been brought down to ~300 IOPS
+  - The loop and store approach required 1000+ IOPS. This has  been brought down to ~500 IOPS
   - This means querying for a symbol during market hours has to be done differently.
   - Table:
     {nifty500DBName}.dailytable
@@ -349,10 +353,11 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
     - preprocesses a bit like generalizing Index ticks to match FULL structure (2 columns vs 47)
     - Adds a couple of columns that will be useful for querying
     - Inserts into a dailytable using a custom DF.to_sql method.
-  - This is done in batches as received and needs ~ 300 IOPS 
+  - This is done in batches as received and needs ~ 500 IOPS 
   - So keep an eye on the Disk I/O wait times to see if there are bottlenecks. If there are, you are likley to see a lag in the ticks stored in the daily table.  
   - Use something like the below query to check for lags DURING MARKET hours. 
-  - `SELECT timestamp, instrument_token, tradingsymbol, price from dailytable order by timestamp desc limit 1; SELECT NOW();` There shouldn't be more than a couple of seconds of difference between the timestamp for the latest entry in DB and the current time.
+  - `SELECT timestamp, instrument_token, tradingsymbol, price from dailytable order by timestamp desc limit 1; SELECT NOW();SELECT TIMEDIFF(NOW(), (SELECT timestamp FROM dailytable ORDER BY timestamp DESC LIMIT 1)) AS time_difference;` 
+  - There shouldn't be more than a couple of seconds of difference between the timestamp for the latest entry in DB and the current time.
    - Time taken by DAS_dailybackup depends on multiple factors like CPU speed, Memory, Disk I/O limits and throughput. Increasing `backupWorkerCount` wouldn't magically improve performance. 
    - Play around with the following config params in your MySQL/MariaDB config to find the optimal values for DAS_Ticker and DAS_dailybackup:
       - innodb_buffer_pool_size

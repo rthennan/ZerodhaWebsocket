@@ -22,7 +22,7 @@ from datetime import datetime as dt, date
 import MySQLdb
 from DAS_gmailer import DAS_mailer
 from DAS_attachmentMailer import sendMailAttach 
-from os import path, makedirs
+from os import path, makedirs,cpu_count
 import pandas as pd
 import json
 import traceback
@@ -48,7 +48,11 @@ nifty500DBName = dasConfig['nifty500DBName']
 niftyOptionsDBName = dasConfig['niftyOptionsDBName']
 bankNiftyOptionsDBName = dasConfig['bankNiftyOptionsDBName']
 
-backupWorkerCount = dasConfig['backupWorkerCount']
+backupWorkerCount = min(dasConfig['backupWorkerCount'],cpu_count())
+#Using excess number of threads fails in some CPU archs, skipping the multithreaded job completely.
+#Handle with caution, retest multiple times
+#Example: AWS EC2 instances with burstable CPU and CPU credit specification set to unlimited.
+
 
 dailyTableName = 'dailytable'
 
@@ -159,11 +163,10 @@ def DAS_backupOneInstrument(instToken):
     #Insert entry into faileBackupTables
     #Doing this now and removing later on success.
     #This way, if the backup fails mid-way for some reason adn DB cursor becomes unusable,we'll still know that the backup failed
-    c3.execute(f"INSERT INTO {nifty500DBName}.failedbackuptables VALUES (%s,%s,%s)",[instToken,tradingsymbol,tableName])
+    msg = f'Started backing up InstToken {instToken} into {dbName}.`{tableName}`.'
+    dailyBackupLogger(msg)
     if instToken in fullTokenList:
         try:
-            msg = f'Started backing up InstToken {instToken} into {dbName}.`{tableName}`.'
-            dailyBackupLogger(msg)
             if instToken in indexTokens :
                 #Create Table in the appropriate DB
                 #Copy all rows for that instrument token from daily table to main table
@@ -214,7 +217,8 @@ def DAS_backupOneInstrument(instToken):
                           ''')
             #msg = f'InstToken {instToken} backed up into {dbName}.`{tableName}.'
             #dailyBackupLogNoPrint(msg)
-            c3.execute(f"DELETE FROM {nifty500DBName}.failedbackuptables WHERE instrument_token={instToken}")
+            #Adding entry in backup success table for tracking failures
+            c3.execute(f"INSERT INTO {nifty500DBName}.backupsuccesstables (instrument_token, tradingsymbol, tablename) VALUES (%s,%s,%s)",[instToken,tradingsymbol,tableName])
             conn3.commit()
             msg = f'Finished backing up InstToken {instToken} into {dbName}.`{tableName}`.'
             dailyBackupLogger(msg)
@@ -273,12 +277,17 @@ def DAS_dailyBackup():
             '''
         dailyBackupLogger(msg)
         
-        #Create TABLE to record list of instrument_tokens that failed backup.
+        msg = f'Creating {nifty500DBName}.backupsuccesstables'
+        dailyBackupLogger(msg)
+        #Create TABLE to record list of instrument_tokens that succeeded backup.
+        #I tried collecting just failed tables. 
+        #But if DAS_backupOneInstrument failed or was skipped for some reason, resulting in a false negative of no failed tables
         #Using DB, as backup is multi-threaded and variable sharing between threads is cumbersome
         c.execute(f'''
                   CREATE TABLE IF NOT EXISTS 
-                  {nifty500DBName}.failedbackuptables 
-                  (instrument_token BIGINT(20),
+                  {nifty500DBName}.backupsuccesstables 
+                  (insertid INT AUTO_INCREMENT PRIMARY KEY,
+                   instrument_token BIGINT(20),
                    tradingsymbol VARCHAR(100),
                    tablename VARCHAR(100)
                    )                  
@@ -287,24 +296,45 @@ def DAS_dailyBackup():
         #Calling DAS_backupOneInstrument for instrumentTokensToStore
         msg = f'Calling DAS_backupOneInstrument for {len(instrumentTokensToStore)} instrument tokens with {backupWorkerCount} concurrent workers'
         dailyBackupLogger(msg)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=backupWorkerCount) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=backupWorkerCount) as executor:
             executor.map(DAS_backupOneInstrument, instrumentTokensToStore)
         
         msg = 'DAS_backupOneInstrument completed. Looking for failed backups'
         dailyBackupLogger(msg)
         
-        #Check If backup failed for any token
-        engine = create_engine(f'mysql+mysqldb://{mysqlUser}:{mysqlPass}@{mysqlHost}:{mysqlPort}/{nifty500DBName}')
-        bakupFailedTokens = pd.read_sql(f"SELECT * FROM {nifty500DBName}.failedbackuptables", engine)
+        #Subscribed tokens for which atleast one tick was received.
+        #Unique Intrument tokens found in dailytable - instrumentTokensToStore
+        #Subscribed token list - fullTokenList
+        subscribedTokensInDailyTable = set(instrumentTokensToStore).intersection(fullTokenList)
         
-        #Drop failedbackuptables
-        c.execute(f"DROP TABLE {nifty500DBName}.failedbackuptables")
-        conn.commit()
+        #Find all tokens for which backup succeeded
+        c.execute(f"SELECT DISTINCT(instrument_token) FROM {nifty500DBName}.backupsuccesstables")
+        bakupSuccessTokens =  list([item[0] for item in c.fetchall()])
+                
+        bakupFailedTokenList = list(set(subscribedTokensInDailyTable).difference(bakupSuccessTokens))
         
-        if len(bakupFailedTokens) > 0:
+        #Drop backupsuccesstables
+        c.execute(f"DROP TABLE {nifty500DBName}.backupsuccesstables")
+
+        if len(bakupFailedTokenList) > 0:
             #Closing the connection and cursor object.
             c.close()
             conn.close()
+            # Initialize an empty list to store the data
+            data = []
+            
+            # Populate the list with data from the dictionaries
+            for token in bakupFailedTokenList:
+                row = {
+                    'instrument_token': token,
+                    'tradingsymbol': mainTokenSymbolDict.get(token, 'N/A'),  # Default to 'N/A' if token not found
+                    'tablename': mainTokenTableDict.get(token, 'N/A')        # Default to 'N/A' if token not found
+                }
+                data.append(row)
+            
+            # Create a DataFrame
+            bakupFailedTokens = pd.DataFrame(data, columns=['instrument_token', 'tradingsymbol', 'tablename'])
+
             #Store failed tables for future reference 
             backUpFailsDir = 'backupFailedTables'
             if not path.exists(backUpFailsDir):
@@ -312,8 +342,9 @@ def DAS_dailyBackup():
             todaybackupFailsName=f'backupsFailed_{str(date.today())}.csv'
             failedTablesLocPath = path.join(backUpFailsDir,todaybackupFailsName)
             bakupFailedTokens.to_csv(failedTablesLocPath,index=False)
-            failTablesMsg = f'DAS_dailybackup failed for {len(bakupFailedTokens)} instrument_token(s).\ndailytable left untouched.\nStored the list as {todaybackupFailsName}'
-            failTableString = '\n'.join(f"{item}, {mainTokenSymbolDict.get(item)}" for item in bakupFailedTokens['instrument_token'].tolist())
+            
+            failTablesMsg = f'DAS_dailybackup failed for {len(bakupFailedTokenList)} instrument_token(s).\ndailytable left untouched.\nStored the list as {todaybackupFailsName}'
+            failTableString = '\n'.join(f"{item}, {mainTokenSymbolDict.get(item)}" for item in bakupFailedTokenList)
             dailyBackupLogger(failTablesMsg)
             dailyBackupLogger(failTableString)
             DAS_errorLogger('DAS_dailyBackup - '+failTablesMsg)
