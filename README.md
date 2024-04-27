@@ -8,7 +8,7 @@ Acquire and store tick data for NSE (India) stocks, Index Futures and Index Opti
    - When the Nifty 500 list is updated by NSE, only additions are updated in the local list. If a stock is removed from Nifty 500, the code still retains it and tries subscribing to it.
    - This also allows you to add additional instruments that may or may not be part of the Nifty 500 to the lookup list.
 - Checks for trading holidays every day and shuts down if it is an NSE trading holiday.
-- The only maintenance required is to ensure there is adequate storage available for the database.
+- The only maintenance required is to ensure there is adequate storage available for the database. **With Nifty 500 and weekly options for two expiries for Nifty and BankNifty, the DB grows by around 6GB per day.**
 
 **DAS** - Data Acquisition System. That is what I am calling it.
 
@@ -256,6 +256,9 @@ Update the rest as required.
  - tradeHolCheck_shutDown.py
      - Check if today is a trading Holiday. Notify and shut the machine down if trading holiday.
      - Added as a cronjob to run at 08:40 a.m., Monday to Friday: `40 8 * * 1-5 /usr/bin/python3 /home/ubuntu/ZerodhaWebsocket/tradeHolCheck_shutDown.py`
+ - zerodhaInstrumentSnapshot.py  
+    - Download Zerodha Instrument list and save it with today's date in zerodhaInstrumentDumps.
+    - Useful if you want to check old instrument lists for whatever reason.   
  - getExpiryPrefix
      - Generate the prefix for Nifty and BankNifty Option instruments for a given date.
      - Once the prefix is generated, you can add the strike price and CE/PE to it to find the relevant instrument.
@@ -281,19 +284,21 @@ Update the rest as required.
   - Run the corresponding Python code.
     - The named tmux sessions allow me to connect to the machine and switch to the specific job if needed.
     - I am logging the screen (stdout) output in case the websocket or some other part of the code spits out or does something that isn't exactly an exception and hence hasn't been captured by the custom loggers.
+    - Call dbSizeCheck and poweroff after DAS_main
     - Startup script I use for DAS_main:
         - startDasMain.sh:
 
-              #!/bin/bash  
+
+              #!/bin/bash
               cd /home/ubuntu/ZerodhaWebsocket
-              tmux new-session -d -s DASRunning '/usr/bin/python3 -u DAS_main.py  2>&1 | tee -a DAS_Main_ScreenLog.log'
+              tmux new-session -d -s DASRunning "/usr/bin/python3 -u DAS_main.py  2>&1 | tee -a DAS_Main_ScreenLog.log && /home/ubuntu/dasScripts/dbSizeCheck.sh && sudo poweroff"
+
 - Cronjob list:
   
       @reboot cd /home/ubuntu/ZerodhaWebsocket/ && /usr/bin/python3 sysStartupNotify.py
       38 8 * * 1-5 cd /home/ubuntu/ZerodhaWebsocket/ && /usr/bin/python3 tradeHolCheck_shutDown.py
+      39 8 * * 1-5 cd /home/ubuntu/ZerodhaWebsocket/ && /usr/bin/python3 zerodhaInstrumentSnapshot.py
       40 8 * * 1-5 /home/ubuntu/startDasMain.sh
-      50 15 * * 1-5 /home/ubuntu/dasScripts/dbSizeCheck.sh
-      00 16 * * 1-5 sudo poweroff
 - dbSizeCheck.sh - Checks disk utilization and DB growth size and notifies me by email. (code not included here)
 
 The only part of this project that is still being done manually is exporting the database from EC2 and importing it to my local machine.  

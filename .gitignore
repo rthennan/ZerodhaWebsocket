@@ -11,3 +11,4 @@ backupMonotir.jpg
 cleanDBRows.py
 Logs/backupLogAnalyzer.py
 /Logs
+/zerodhaInstrumentDumps
