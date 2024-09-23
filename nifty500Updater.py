@@ -40,6 +40,13 @@ ChangeLog for symbols identified manually:
     - ADANITRANS to ADANIENSOL with effect from August 24, 2023
     - MFL changed to EPIGRAL  with effect from September 11, 2023
 
+ChangeLog:
+2024-09-23:
+    Nifty 500 list URL changed from https://archives.nseindia.com/content/indices/ind_nifty500list.csv to https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv
+    And NSE seems to have started blocking programmatic access.
+    Hence mimicking a user-agent (generateRandomUserAgent) and extracting CSV from the response text.
+    
+
 """
 
 import pandas as pd
@@ -51,12 +58,16 @@ from time import sleep
 from DAS_gmailer import DAS_mailer
 import traceback
 from DAS_errorLogger import DAS_errorLogger
+from io import StringIO
+import requests
+import random
+
 numbOfRetries = 5
 
 lookUpFilesDir = 'lookupTables'
 currentLookUpFileName = 'lookupTables_Nifty500.csv'
 currentLookupTablePath = path.join(lookUpFilesDir,currentLookUpFileName)
-n500url = "https://archives.nseindia.com/content/indices/ind_nifty500list.csv"
+n500url = "https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv"
 
 
 def nifty500UpdateMainlogger(txt):
@@ -75,6 +86,45 @@ def nifty500UpdateChangelogger(txt):
     logMsg = '\n'+str(dt.now())+'    ' + txt
     with open(logFile,'a') as f:
         f.write(logMsg)      
+
+
+def generateRandomUserAgent():
+    platforms = [
+        'Windows NT 10.0; Win64; x64',
+        'Macintosh; Intel Mac OS X 10_15_7',
+        'X11; Linux x86_64',
+        'iPhone; CPU iPhone OS 14_0 like Mac OS X',
+        'Android 10; Mobile;'
+    ]
+    
+    browsers = [
+        ('Chrome', ['91.0.4472.124', '92.0.4515.159', '93.0.4577.82']),
+        ('Firefox', ['89.0', '90.0', '91.0']),
+        ('Safari', ['14.0.1', '13.1.2', '12.1.2']),
+        ('Edge', ['91.0.864.59', '92.0.902.55'])
+    ]
+    
+    # Randomly select a platform and browser
+    platform = random.choice(platforms)
+    browser, versions = random.choice(browsers)
+    version = random.choice(versions)
+    
+    # Construct the User-Agent string based on the platform and browser
+    if browser == 'Safari':
+        user_agent = f'Mozilla/5.0 ({platform}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{version} Safari/605.1.15'
+    elif browser == 'Chrome':
+        user_agent = f'Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{version} Safari/537.36'
+    elif browser == 'Firefox':
+        user_agent = f'Mozilla/5.0 ({platform}; rv:{version}) Gecko/20100101 Firefox/{version}'
+    elif browser == 'Edge':
+        user_agent = f'Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36 Edg/{version}'
+    
+    msg = f'User agent for the day:\n {user_agent}'
+    nifty500UpdateMainlogger(msg)
+    return user_agent
+
+
+
 
 #Used for NIFTYFUT
 def lastThursday(inputDate):   
@@ -152,7 +202,9 @@ def getNifty500SymbolList():
     for attempt in range(1,numbOfRetries+1):
     
         try:    
-            nifty500FromNSE = pd.read_csv(n500url)
+            response = requests.get(n500url, headers={'User-Agent': generateRandomUserAgent()})
+            csv_data = StringIO(response.text)
+            nifty500FromNSE = pd.read_csv(csv_data)
             nifty500FromNSE.loc[nifty500FromNSE['Series'] == 'BE', 'Symbol'] += '-BE'
             return nifty500FromNSE['Symbol'].tolist()   
         except Exception as e:
@@ -278,7 +330,9 @@ def updateSymbolTableNameList():
         todayNSE500TodayListName = f"ind_nifty500_list_{str(date.today())}.csv"
         # Read the CSV file from the URL and save it directly
         #Pandas could have been skipped here, using requests. Using Pandas as it has lesser operations between read and write
-        nse500df = pd.read_csv(n500url)
+        response = requests.get(n500url, headers={'User-Agent': generateRandomUserAgent()})
+        csv_data = StringIO(response.text)
+        nse500df = pd.read_csv(csv_data)
         nse500df.to_csv(path.join(lookUpFilesDir,todayNSE500TodayListName), index=False)
         
         #Arranging lookupTable alphabetically before overwriting the local lookup file
