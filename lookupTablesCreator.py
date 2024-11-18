@@ -33,6 +33,11 @@ Check _InstrumentsSubscribed.log to see the list of symbols subscribed to
     - DAS_Ticker now stores live ticks into one table now. This is to reduce IOPS
     - Hence only creating one table, instead of the previous 'one table per instrument' approach 
 
+#Change log - 2024-11-18
+    - getBankNiftyExpiry now takes 'offsetMonth' and returns this month or next month expiry.
+    - This change is required as BankNifty expiries are no longer weekly.
+    - Also simplifying getNiftyExpiry to accept an 'offsetWeek' and return weekly expiries accordingly
+
 """
 import pandas as pd
 import numpy as np
@@ -135,9 +140,8 @@ def getZerodhaInstDump():
        
     return pd.read_csv(zerdhaIstrumentDumpFilePath)
     
-def getNiftyExpiry(inDate):
+def getNiftyExpiry(offsetWeek): #offsetWeek=0 this week expiry. offsetWeek = 1 = next week expiry
     #Uses global variable zerodhaInstrumentsDump
-    inDate = dt.strptime(str(inDate), '%Y-%m-%d').date()
     #Filtering Nifty Options from zerodhaInstrumentsDump
     zerodhaInstrumentsDump = getZerodhaInstDump()
     niftyOptions = zerodhaInstrumentsDump[zerodhaInstrumentsDump['segment'].isin(['NFO-OPT'])]
@@ -146,19 +150,10 @@ def getNiftyExpiry(inDate):
     niftyOptions = niftyOptions[niftyOptions['instrument_type'].isin(['CE'])]
     niftyExpiyDates = sorted(list(niftyOptions['expiry'].unique()))
 
-    thisThursday = inDate + relativedelta(weekday=TH(0))
-    niftyExpiryDate = thisThursday
-    
-    #Check if thisThursday is in the nifty expiry dates.
-    #If thursday is a Holiday, the previous TRADING day would be the expiry.
-    #Keep decrementing the date till it is found in the expiry dates
-    while str(niftyExpiryDate) not in niftyExpiyDates:
-        niftyExpiryDate = niftyExpiryDate - timedelta(days=1)
-    return str(niftyExpiryDate)  
+    return str(niftyExpiyDates[offsetWeek])  
 
-def getBankNiftyExpiry(inDate):
+def getBankNiftyExpiry(offsetMonth): #offsetMonth=0 this month expiry. offset = 1 = next month expiry
     #Uses global variable zerodhaInstrumentsDump
-    inDate = dt.strptime(str(inDate), '%Y-%m-%d').date()
     #Filtering Nifty Options from zerodhaInstrumentsDump
     zerodhaInstrumentsDump = getZerodhaInstDump()
     bankNiftyOptions = zerodhaInstrumentsDump[zerodhaInstrumentsDump['segment'].isin(['NFO-OPT'])]
@@ -166,16 +161,7 @@ def getBankNiftyExpiry(inDate):
     #Filtering just CE as we interested only in the expiry dates now and not the actual instruments
     bankNiftyOptions = bankNiftyOptions[bankNiftyOptions['instrument_type'].isin(['CE'])]
     bankNiftyExpiyDates = sorted(list(bankNiftyOptions['expiry'].unique()))
-
-    thisWednesday = inDate + relativedelta(weekday=WE(0))
-    bankNiftyExpiryDate = thisWednesday
-    
-    #Check if thisWednesday is in the nifty expiry dates.
-    #If Wednesday is a Holiday, the previous TRADING day would be the expiry.
-    #Keep decrementing the date till it is found in the expiry dates
-    while str(bankNiftyExpiryDate) not in bankNiftyExpiyDates:
-        bankNiftyExpiryDate = bankNiftyExpiryDate - timedelta(days=1)
-    return str(bankNiftyExpiryDate)  
+    return str(bankNiftyExpiyDates[offsetMonth])  
 
 def lookupTablesCreatorNifty500():
     try:
@@ -278,8 +264,8 @@ def lookupTablesCreatorNiftyOptions():
         lookupTableCreatorLogger(msg)
         try:
         
-            niftyThisExpiry = getNiftyExpiry(date.today()) #This Expiry
-            niftyNextExpiry = getNiftyExpiry(date.today()+timedelta(days=7)) #Next Expiry
+            niftyThisExpiry = getNiftyExpiry(0) #This Expiry
+            niftyNextExpiry = getNiftyExpiry(1) #Next Expiry
             
             #Downloading Zerodha Instrument dump 
             zerodhaInstrumentsDump = getZerodhaInstDump()
@@ -341,8 +327,8 @@ def lookupTablesCreatorBankOptions():
         msg = 'DAS - BankNifty Options Lookup Table Creation Started'
         lookupTableCreatorLogger(msg)
         try:        
-            bankNiftyThisExpiry = getBankNiftyExpiry(date.today()) #This Expiry
-            bankNiftyNextExpiry = getBankNiftyExpiry(date.today()+timedelta(days=7)) #Next Expiry
+            bankNiftyThisExpiry = getBankNiftyExpiry(0) #This Expiry
+            bankNiftyNextExpiry = getBankNiftyExpiry(1) #Next Expiry
             
             #Downloading Zerodha Instrument dump 
             zerodhaInstrumentsDump = getZerodhaInstDump()
