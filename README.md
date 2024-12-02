@@ -1,3 +1,5 @@
+## Telegram Group for questions / code releases - [Zerodha_Websocket_DAS](https://t.me/+2ioXeuD0iToxYmI1) 
+
 # Zerodha Websocket for Nifty500, Nifty Options and BankNifty Options
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
 
