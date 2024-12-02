@@ -379,4 +379,6 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
 - However, my updates weren't fast enough on subtle changes in a few occasions.  
 For example, I failed to notice the expiry date changes in BankNifty (Thur to Wed) for almost a month in September 2023.  
 - So, if you use this project and come across some change in NSE or Zerodha that might affect the data acquisition in any way, do not hesitate to create an issue in this repo. I'll try to address it if applicable or let you know if it is irrelevant.  
-- Feel free to [contact me](https://www.linkedin.com/in/rthennan) for any questions. 
+
+Feel free to reach out in the Telegram group for any questions.
+- ## Telegram Group for questions / code releases - [Zerodha_Websocket_DAS](https://t.me/zerodhaWebSocket) 
