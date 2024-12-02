@@ -131,7 +131,10 @@ def lastThursday(inputDate):
     # Convert string to datetime
     #inputDate = dt.strptime(dateString, '%Y-%m-%d')    
     # Last day of the input month
-    lastDayofTheMonth = (date(inputDate.year, inputDate.month + 1, 1) - timedelta(days=1)).day
+    if inputDate.month == 12:
+        lastDayofTheMonth = (date(inputDate.year+1, 1, 1) - timedelta(days=1)).day
+    else:
+        lastDayofTheMonth = (date(inputDate.year, inputDate.month + 1, 1) - timedelta(days=1)).day
     # Date of the last day of the input month
     lastDate = date(inputDate.year, inputDate.month, lastDayofTheMonth)    
     # Find the last Thursday
@@ -144,7 +147,10 @@ def lastThursday(inputDate):
 #Used for BANKNIFTYFUT
 def lastWednesday(inputDate):
     # Last day of the input month
-    lastDayofTheMonth = (date(inputDate.year, inputDate.month + 1, 1) - timedelta(days=1)).day
+    if inputDate.month == 12:
+        lastDayofTheMonth = (date(inputDate.year+1, 1, 1) - timedelta(days=1)).day
+    else:
+        lastDayofTheMonth = (date(inputDate.year, inputDate.month + 1, 1) - timedelta(days=1)).day
     # Date of the last day of the input month
     lastDate = date(inputDate.year, inputDate.month, lastDayofTheMonth)
     # Find the last Wednesday
