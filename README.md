@@ -267,7 +267,7 @@ Update the rest as required.
      - {getExpiryPrefix(inputDate)}{strikePrice}CE or PE
      - Useful in backtests.
      - Relies on the trading holidays being maintained in the current folder as tradingHolidaysAllYears.csv
-     - tradingHolidaysAllYears.csv holds holidays from 2019 to 2024
+     - tradingHolidaysAllYears.csv holds holidays from 2019 to 2025
      - Usage:
           
                from getExpiryPrefix import getExpPrefNifty, getExpPrefBankNifty

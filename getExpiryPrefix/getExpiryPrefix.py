@@ -13,6 +13,9 @@ Expiry day changes for BankNifty Options:
 
     - Banknifty monthly and quartely expiry day changed to Wednesday w.e.f  1st of March 2024
       https://zerodha.com/marketintel/bulletin/367671/revision-in-expiry-day-of-monthly-and-quarterly-banknifty-fo-contracts
+      
+     - BankNifty expiries are now only monthly  - https://www.angelone.in/blog/bank-nifty-weekly-expiry-bids-adieu-2
+     - Nov 13 2024
 
 """
 
@@ -29,6 +32,7 @@ def normExp(inDate3):
         return str(inDate3.year)[2:]+str(inDate3.month)+('0'+str(inDate3.day))[-2:]
     elif 10 <= inDate3.month <= 12:
         return str(inDate3.year)[2:]+(str(calendar.month_name[inDate3.month]).upper()[0])+('0'+str(inDate3.day))[-2:]
+
 #Monthly Expiry
 def monthExp(inDate3):
     inDate3 = dt.strptime(str(inDate3), '%Y-%m-%d').date()
@@ -179,10 +183,22 @@ def getExpPrefBankNiftyWednesday(inDate):
             expDay = expDay - tdel(days=1)
         return f'BANKNIFTY{normExp(thisWednesday)}'
     
+#From Nov 13 2024, no more weekly expiries for Banknifty
+def getExpPrefBankNiftyMonthlyOnly(inDate):
+    inDate = dt.strptime(str(inDate), '%Y-%m-%d').date()  
+    thisWednesday = inDate + relativedelta(weekday=WE(0))
+    #Is this Thursday the last thursday of the month?
+    #If yes, its a monthly expiry
+    #Doesn't matter if wednesday is a holiday. 
+    #Its going to be a monthly expiry anyway. Instrument name won't change
+    return f'BANKNIFTY{monthExp(thisWednesday)}' 
+  
+    
 def getExpPrefBankNifty(inDate):
     inDate = dt.strptime(str(inDate), '%Y-%m-%d').date()
     sepChangeDate = date(2023, 9, 4)
     marChangeDate = date(2024, 3, 1)
+    novChangeDate = date(2024, 11, 13)
     # Ensure the input date's year is covered in the holidays file
     if str(inDate.year) in yearsinMainHolidayList:
         # If inDate is before the first change date (4th September 2023)
@@ -191,9 +207,11 @@ def getExpPrefBankNifty(inDate):
         # If inDate is between the first and second change dates
         elif sepChangeDate <= inDate < marChangeDate:
             return getExpPrefBankNiftyWierdo(inDate)
-        # If inDate is after the second change date (1st March 2024)
-        elif inDate >= marChangeDate:
+        # If inDate is after the second change date (1st March 2024) But before Nov 13, 2024
+        elif marChangeDate <= inDate <= novChangeDate:
             return getExpPrefBankNiftyWednesday(inDate)
+        elif inDate > novChangeDate:
+            return getExpPrefBankNiftyMonthlyOnly(inDate)
     else:
         print(f"getExpiryPrefix : Given date {inDate} doesn't seem to be covered by {holsFilePath}\nYears in the holiday List - {yearsinMainHolidayList}")
 
