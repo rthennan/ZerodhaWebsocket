@@ -213,7 +213,7 @@ def accessTokenReq():
             else:
                 break
         else:
-            msg = f'DAS - Access token Failed After {numbOfRetries} attempts. Exception: (exceptMsg)'
+            msg = f'DAS - Access token Failed After {numbOfRetries} attempts. Exception: {exceptMsg}'
             accessTokenLogger(msg)
             DAS_errorLogger(msg)
             DAS_mailer('DAS - Access token Failed.',msg) 
