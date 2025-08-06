@@ -38,6 +38,14 @@ Check _InstrumentsSubscribed.log to see the list of symbols subscribed to
     - This change is required as BankNifty expiries are no longer weekly.
     - Also simplifying getNiftyExpiry to accept an 'offsetWeek' and return weekly expiries accordingly
 
+#Change log - 2025-08-06:
+    - makedirs(lookupDirectory,exist_ok=True) in the off chance that the lookup directory wasn't created. 
+        - unlikely,first, standalone run for lookupTableCreator
+    - getNiftyExpiry accepts 'offsetExpiry' and returns this or next expiry.
+        - agnostic of weekly or monthly or fortnightly or whatever the puck SEBI decided to do
+    - Similarly, getBankNiftyExpiry accepts 'offsetExpiry'
+    
+
 """
 import pandas as pd
 import numpy as np
@@ -53,6 +61,7 @@ from time import sleep
 import sys
 import urllib.request
 from isDasConfigDefault import isDasConfigDefault
+
 numbOfRetries = 5
 
 configFile = 'dasConfig.json'
@@ -68,8 +77,10 @@ dailyTableName = 'dailytable'
 nifty500DBName = dasConfig['nifty500DBName']
 
 lookupDirectory = 'lookupTables'
+makedirs(lookupDirectory,exist_ok=True)
 n500instrumentLookupFile = 'lookupTables_Nifty500.csv'
 n500InstrumentFilePath = path.join(lookupDirectory,n500instrumentLookupFile)
+
     
 def lookupTableCreatorLogger(txt):
     print(dt.now(),txt)
@@ -140,7 +151,7 @@ def getZerodhaInstDump():
        
     return pd.read_csv(zerdhaIstrumentDumpFilePath)
     
-def getNiftyExpiry(offsetWeek): #offsetWeek=0 this week expiry. offsetWeek = 1 = next week expiry
+def getNiftyExpiry(offsetExpiry): #offsetExpiry=0 => this expiry. offsetExpiry=1 => next expiry
     #Uses global variable zerodhaInstrumentsDump
     #Filtering Nifty Options from zerodhaInstrumentsDump
     zerodhaInstrumentsDump = getZerodhaInstDump()
@@ -150,9 +161,9 @@ def getNiftyExpiry(offsetWeek): #offsetWeek=0 this week expiry. offsetWeek = 1 =
     niftyOptions = niftyOptions[niftyOptions['instrument_type'].isin(['CE'])]
     niftyExpiyDates = sorted(list(niftyOptions['expiry'].unique()))
 
-    return str(niftyExpiyDates[offsetWeek])  
+    return str(niftyExpiyDates[offsetExpiry])  
 
-def getBankNiftyExpiry(offsetMonth): #offsetMonth=0 this month expiry. offset = 1 = next month expiry
+def getBankNiftyExpiry(offsetExpiry): #offsetExpiry=0 => this expiry. offsetExpiry=1 => next expiry
     #Uses global variable zerodhaInstrumentsDump
     #Filtering Nifty Options from zerodhaInstrumentsDump
     zerodhaInstrumentsDump = getZerodhaInstDump()
@@ -161,7 +172,7 @@ def getBankNiftyExpiry(offsetMonth): #offsetMonth=0 this month expiry. offset = 
     #Filtering just CE as we interested only in the expiry dates now and not the actual instruments
     bankNiftyOptions = bankNiftyOptions[bankNiftyOptions['instrument_type'].isin(['CE'])]
     bankNiftyExpiyDates = sorted(list(bankNiftyOptions['expiry'].unique()))
-    return str(bankNiftyExpiyDates[offsetMonth])  
+    return str(bankNiftyExpiyDates[offsetExpiry])  
 
 def lookupTablesCreatorNifty500():
     try:

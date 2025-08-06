@@ -199,7 +199,7 @@ Update the rest as required.
             - Saves instrument_token for Indexes indexTokenList.csv
             - Creates and Saves instrument_token:TableName dictionary nifty500TokenTableDict.npy - Used by DAS_Ticker to identify DB, Table and tradingsymbol while before storing ticks.
         - 4.2 lookupTablesCreatorNiftyOptions
-            - Finds current and next weekly expiry dates for Nifty Options
+            - Finds current and next expiry dates for Nifty Options (Weekly or monthly or whatever)
             - Saves instrument_token list for all Nifty Option instruments for those two expiries as niftyOptionsTokenList.csv
             - Creates and Saves instrument_token:TableName dictionary niftyOptionsTokenTableDict.npy
         - 4.3 lookupTablesCreatorBankOptions
@@ -308,6 +308,12 @@ This has to be done cause AWS EBS is expensive compared to local storage (duh!),
 Though I have automated parts of this process (dump in AWS, SCP from Local, import in local, disaster recovery backup to Deep Archive), it has to be triggered manually as the local machine and the EC2 instance might not be running at the same time.
 
 ### Changelog:
+  #### <ins>**2025-08-06**</ins>:
+  - Updates to lookupTablesCreator.py
+    - getNiftyExpiry and getBankNiftyExpiry accept 'offsetExpiry' and returns this or next expiry.
+        - agnostic of weekly or monthly or fortnightly or whatever the puck SEBI decided to do
+
+
   #### <ins>**2024-04-11**</ins>:
   - DAS_Ticker - Live tick data is now stored into one table for all ticks. This was to reduce the DB and disk overhead(IOPS) from looping through each tick and storing it in the respective table.
   - The loop and store approach required 1000+ IOPS. This has  been brought down to ~500 IOPS
