@@ -308,6 +308,11 @@ This has to be done cause AWS EBS is expensive compared to local storage (duh!),
 Though I have automated parts of this process (dump in AWS, SCP from Local, import in local, disaster recovery backup to Deep Archive), it has to be triggered manually as the local machine and the EC2 instance might not be running at the same time.
 
 ### Changelog:
+
+  #### <ins>**2025-08-07**</ins>:
+  - nifty500Updater => getCurrentFuture for Nifty and BankNifty were previously checking LastThursday and Lastwednesday.
+  - Fixed them to rely purely on the Zerodha instrument dump, dynamically finding the active Future for today
+  - Resilient to changes in the expiry day (wednesday, 2nd saturday, 45th friday...)
   #### <ins>**2025-08-06**</ins>:
   - Updates to lookupTablesCreator.py
     - getNiftyExpiry and getBankNiftyExpiry accept 'offsetExpiry' and returns this or next expiry.

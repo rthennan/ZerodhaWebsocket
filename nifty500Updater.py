@@ -50,7 +50,7 @@ ChangeLog:
 2025-08-07:
     - getCurrentFuture for Nifty and BankNifty were previously check LastThursday and Lastwednesday.
     - Fixed them to rely purely on the Zerodha instrument dump, dynamically finding the active Future for today
-    - Resilient to changes in the expiry day (wednesday, 2nd saturday, 45th firday...)
+    - Resilient to changes in the expiry day (wednesday, 2nd saturday, 45th friday...)
 
 """
 
