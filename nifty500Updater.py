@@ -45,7 +45,12 @@ ChangeLog:
     Nifty 500 list URL changed from https://archives.nseindia.com/content/indices/ind_nifty500list.csv to https://nsearchives.nseindia.com/content/indices/ind_nifty500list.csv
     And NSE seems to have started blocking programmatic access.
     Hence mimicking a user-agent (generateRandomUserAgent) and extracting CSV from the response text.
-    
+
+ChangeLog:
+2025-08-07:
+    - getCurrentFuture for Nifty and BankNifty were previously check LastThursday and Lastwednesday.
+    - Fixed them to rely purely on the Zerodha instrument dump, dynamically finding the active Future for today
+    - Resilient to changes in the expiry day (wednesday, 2nd saturday, 45th firday...)
 
 """
 
@@ -61,6 +66,7 @@ from DAS_errorLogger import DAS_errorLogger
 from io import StringIO
 import requests
 import random
+import urllib.request
 
 numbOfRetries = 5
 
@@ -123,68 +129,71 @@ def generateRandomUserAgent():
     nifty500UpdateMainlogger(msg)
     return user_agent
 
-
-
-
-#Used for NIFTYFUT
-def lastThursday(inputDate):   
-    # Convert string to datetime
-    #inputDate = dt.strptime(dateString, '%Y-%m-%d')    
-    # Last day of the input month
-    if inputDate.month == 12:
-        lastDayofTheMonth = (date(inputDate.year+1, 1, 1) - timedelta(days=1)).day
+def downloadZerodhaInstrumentFile():
+    zerodhaDumpUrl = 'https://api.kite.trade/instruments'
+    zerdhaIstrumentDumpFileName = 'zerodhaInstrumentDump.csv'
+    zerdhaIstrumentDumpFilePath = path.join('lookupTables',zerdhaIstrumentDumpFileName)
+    for attempt in range(1,numbOfRetries+1):
+        try:    
+            urllib.request.urlretrieve(zerodhaDumpUrl, zerdhaIstrumentDumpFilePath)            
+            msg = 'Downloaded Instrument dump file from Zerodha'
+            nifty500UpdateMainlogger(msg)   
+            return None
+        except Exception as e:
+            msg = f'Downloading zerodhaInstrumentsDump from {zerodhaDumpUrl} Failed. Attempt No :{attempt} . Exception-> {e} Traceback : {traceback.format_exc()}.\nWill retry after 30 seconds'
+            nifty500UpdateMainlogger(msg)
+            DAS_errorLogger('lookupTablesCreator - '+msg)
+            sleep(30)
+        else:
+            break
     else:
-        lastDayofTheMonth = (date(inputDate.year, inputDate.month + 1, 1) - timedelta(days=1)).day
-    # Date of the last day of the input month
-    lastDate = date(inputDate.year, inputDate.month, lastDayofTheMonth)    
-    # Find the last Thursday
-    if lastDate.weekday() == 3:
-        lastThursday = lastDate
-    else:
-        lastThursday = lastDate - timedelta(days=(lastDate.weekday() - 3) % 7)
-    return lastThursday
-
-#Used for BANKNIFTYFUT
-def lastWednesday(inputDate):
-    # Last day of the input month
-    if inputDate.month == 12:
-        lastDayofTheMonth = (date(inputDate.year+1, 1, 1) - timedelta(days=1)).day
-    else:
-        lastDayofTheMonth = (date(inputDate.year, inputDate.month + 1, 1) - timedelta(days=1)).day
-    # Date of the last day of the input month
-    lastDate = date(inputDate.year, inputDate.month, lastDayofTheMonth)
-    # Find the last Wednesday
-    if lastDate.weekday() == 2:
-        lastWednesday = lastDate
-    else:
-        lastWednesday = lastDate - timedelta(days=(lastDate.weekday() - 2) % 7)
-    return lastWednesday
+        msg = f'Downloading zerodhaInstrumentsDump from {zerodhaDumpUrl} Failed after {numbOfRetries} attempts. Exiting'
+        nifty500UpdateMainlogger(msg)
+        DAS_errorLogger('lookupTablesCreator - '+msg)
+        sys.exit()
 
 
-def getCurrentFuture(indexName):
-    #currentDate
-    indexName = indexName.upper()
-    todayDate = date.today()
-    if indexName == 'NIFTY':
-        thisMonthExpiryDate = lastThursday(todayDate)
-    elif indexName == 'BANKNIFTY':
-        thisMonthExpiryDate = lastWednesday(todayDate)
-    #If today is less than or equal to expiry date, use this month expiry.
-    if todayDate <= thisMonthExpiryDate:
-        #current month future
-        thisMonth = todayDate.strftime("%b").upper()
-        thisYear= todayDate.year  
-        thisMonthFutFormat = str(thisYear)[-2:] + thisMonth + 'FUT'
-        return indexName+thisMonthFutFormat
-
+#Not import this from lookuptable creator, to avoid dependency just for this one function
+def getZerodhaInstDump():
+    zerdhaIstrumentDumpFileName = 'zerodhaInstrumentDump.csv'
+    zerdhaIstrumentDumpFilePath = path.join('lookupTables',zerdhaIstrumentDumpFileName)
+    if path.exists(zerdhaIstrumentDumpFilePath):
+        oneHourAgo = dt.now() - timedelta(hours=1)
+        #if file exists and is fresh (not older than an hour), use the local file.
+        zerodhaDumpModifiedTime = dt.fromtimestamp(path.getmtime(zerdhaIstrumentDumpFilePath))
+        if zerodhaDumpModifiedTime >= oneHourAgo:
+            msg = f'local zerdhaIstrumentDumpFile {zerdhaIstrumentDumpFileName} is fresh. Using it.'
+            nifty500UpdateMainlogger(msg)
+        else:
+            msg = f'local zerodhaInstrumentDumpFile {zerdhaIstrumentDumpFileName} is older than 1 hour. Downloading a new one'
+            nifty500UpdateMainlogger(msg)
+            downloadZerodhaInstrumentFile()
     else:
-        #Incrementing the date by 15 days to get the next Future's Month and year
-        #Might be able to get away with 6 or 7 days. Doing 15 as a safe measure
-        nextMonthDate = todayDate + timedelta(days=15)
-        nextMonth = nextMonthDate.strftime("%b").upper()
-        nextMonthYear= nextMonthDate.year  
-        nextMonthFutFormat = str(nextMonthYear)[-2:] + nextMonth + 'FUT'
-        return indexName+nextMonthFutFormat
+        msg = f'local zerodhaInstrumentDumpFile {zerdhaIstrumentDumpFileName} not found. Downloading a new one'
+        nifty500UpdateMainlogger(msg)
+        downloadZerodhaInstrumentFile()
+       
+    return pd.read_csv(zerdhaIstrumentDumpFilePath)
+
+
+def getCurrentFuture(index_name):
+    """
+    Get current month future for given index
+    Args:
+        index_name (str): 'NIFTY' or 'BANKNIFTY'
+    Returns:
+        str: Trading symbol of the current month future
+    """
+    zerodhaInstrumentsDump = getZerodhaInstDump()
+    filteredDF = zerodhaInstrumentsDump[
+        (zerodhaInstrumentsDump['segment'] == 'NFO-FUT') &
+        (zerodhaInstrumentsDump['name'] == index_name)
+    ]
+    fut_expiries = filteredDF['expiry'].dropna().unique().tolist()
+    thisFutExpiryDate = min(fut_expiries, key=lambda d: dt.strptime(d, "%Y-%m-%d"))
+    currentFuture = filteredDF[filteredDF['expiry'] == thisFutExpiryDate]['tradingsymbol'].iloc[0]
+    return currentFuture
+
 
 def replaceSpecial(intext):
     #Remove '-BE' if found at the end of the symbolName
