@@ -52,45 +52,44 @@ def holidayCheckLogger(txt):
 def getHolidayListFromUpStox():
     upStoxEndPoint = 'https://api.upstox.com/v2/market/holidays'
     upStoxHolidayList = []
-    for attempt in range(1,numbOfRetries+1):
+    for attempt in range(1, numbOfRetries+1):
         try:
             upStoxResponse = requests.get(upStoxEndPoint)
             if upStoxResponse.status_code != 200:
-                raise Exception(f"getHolidayListFromUpStox from {upStoxEndPoint} Failed.HTTP Response => {upStoxResponse.status_code}")
-            elif upStoxResponse.status_code == 200:
-                holidayAPI_Response = upStoxResponse.json()
-                if not holidayAPI_Response['status'] == 'success':
-                    raise Exception(f"API response status not success: {holidayAPI_Response['status']}")
-                #Does not(not success) always mean success?
-                #This isn't a philosophical question
-                if holidayAPI_Response['status'] == 'success':
-                    holidaysListFromUpstox = holidayAPI_Response['data'] 
-                    #Looking for NSE holidays Only
-                    for holidayItem in holidaysListFromUpstox:
-                        if 'NSE' in holidayItem['closed_exchanges']:
-                            upStoxHolidayList.append(holidayItem['date'])
-                    tradingHolidays= pd.DataFrame(upStoxHolidayList, columns=['Date'])
-                    tradingHolidays.to_csv('tradingHolidays.csv', index=False) 
-                    msg = 'Successfully fetched trading holiday list from Upstox and saved it Locally'
-                    holidayCheckLogger(msg)
-                    return upStoxHolidayList
-            raise Exception('Undefined program flow in getHolidayListFromUpStox')
-                    
-        except Exception as e:
-            msg = f'getHolidayListFromUpStox Failed. Attempt No :{attempt} . Exception-> {e} Traceback : {traceback.format_exc()}.\nWill retry after 30 seconds'
+                raise Exception(f"getHolidayListFromUpStox from {upStoxEndPoint} Failed. HTTP Response => {upStoxResponse.status_code}")
+            
+            holidayAPI_Response = upStoxResponse.json()
+            if holidayAPI_Response.get('status') != 'success':
+                raise Exception(f"API response status not success: {holidayAPI_Response.get('status')}")
+            
+            holidaysListFromUpstox = holidayAPI_Response.get('data', [])
+            # Looking for NSE holidays only
+            for holidayItem in holidaysListFromUpstox:
+                closed_exchanges = holidayItem.get('closed_exchanges', [])
+                if 'NSE' in closed_exchanges:
+                    upStoxHolidayList.append(holidayItem['date'])
+            
+            tradingHolidays = pd.DataFrame(upStoxHolidayList, columns=['Date'])
+            tradingHolidays.to_csv('tradingHolidays.csv', index=False)
+            
+            msg = 'Successfully fetched trading holiday list from Upstox and saved it Locally'
             holidayCheckLogger(msg)
-            DAS_errorLogger('tradeHolidayCheck - '+msg)
+            return upStoxHolidayList
+
+        except Exception as e:
+            msg = f'getHolidayListFromUpStox Failed. Attempt No : {attempt}. Exception -> {e} Traceback : {traceback.format_exc()}.\nWill retry after 30 seconds'
+            holidayCheckLogger(msg)
+            DAS_errorLogger('tradeHolidayCheck - ' + msg)
             sleep(30)
         else:
             break
     else:
         msg = f'getHolidayListFromUpStox - Failed After {numbOfRetries} attempts. Will try getHolidayListFromNSE'
         holidayCheckLogger(msg)
-        DAS_errorLogger('tradeHolidayCheck - '+msg)
-        DAS_mailer('DAS - getHolidayListFromUpstox Failed.',msg)   
+        DAS_errorLogger('tradeHolidayCheck - ' + msg)
+        DAS_mailer('DAS - getHolidayListFromUpstox Failed.', msg)
         return []
-            
-            
+
 
 def getHolidayListFromNSE():
     for attempt in range(1,numbOfRetries+1):
