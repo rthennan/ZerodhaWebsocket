@@ -22,7 +22,7 @@ Expiry Day changed for Nifty from the 29th of August 2025
 - From 2nd September 2025 onwards → Tuesday is expiry.
 https://zerodha.com/marketintel/bulletin/417370/revision-in-expiry-day-of-index-and-stock-derivatives-contracts
 
-BankNifty exiry changes:
+BankNifty expiry changes:
     https://hdfcsky.com/blogs/share-market/bank-nifty-expiry
     Not adapted
     Track this Manually please.
