@@ -22,6 +22,22 @@ Expiry Day changed for Nifty from the 29th of August 2025
 - From 2nd September 2025 onwards → Tuesday is expiry.
 https://zerodha.com/marketintel/bulletin/417370/revision-in-expiry-day-of-index-and-stock-derivatives-contracts
 
+BankNifty exiry changes:
+    https://hdfcsky.com/blogs/share-market/bank-nifty-expiry
+    Not adapted
+    Track this Manually please.
+    I am tired of these changes in BankNifty
+    
+    I think BankNifty expiry is still based on Last Thursday.
+    Not fixing this. May be for later.
+    Bug me if you need this or raise a PR
+    
+    October 2020: Quarterly Bank Nifty futures contracts were introduced, expiring on the last Thursday of the March, June, September, and December cycle.
+    September 2023: The NSE shifted the weekly expiry of Bank Nifty from Thursday to Wednesday.
+    November 2024: Weekly expiry contracts for Bank Nifty were discontinued on November 20, 2024.
+    January 2025: The monthly and quarterly expiry for Bank Nifty shifted from Wednesday to Thursday.
+    March 2025: The monthly and quarterly expiry for Bank Nifty shifted from Last Thursday to Monday.
+
 """
 
 #trade holidays Path
