@@ -17,6 +17,11 @@ Expiry day changes for BankNifty Options:
      - BankNifty expiries are now only monthly  - https://www.angelone.in/blog/bank-nifty-weekly-expiry-bids-adieu-2
      - Nov 13 2024
 
+Expiry Day changed for Nifty from the 29th of August 2025
+- Until 28th August 2025 → Thursday was expiry.
+- From 2nd September 2025 onwards → Tuesday is expiry.
+https://zerodha.com/marketintel/bulletin/417370/revision-in-expiry-day-of-index-and-stock-derivatives-contracts
+
 """
 
 #trade holidays Path
@@ -38,54 +43,58 @@ def monthExp(inDate3):
     inDate3 = dt.strptime(str(inDate3), '%Y-%m-%d').date()
     return (str(inDate3.year)[2:])+(str(calendar.month_name[inDate3.month]).upper()[:3])
 
-def isLastWednesday(date_to_check):
-    date_to_check = dt.strptime(str(date_to_check), '%Y-%m-%d').date() 
-    # Check if the given date is a Thursday (weekday index 3)
-    if date_to_check.weekday() != calendar.WEDNESDAY:
-        return False
 
-    # Get the year and month from the given date
-    year = date_to_check.year
-    month = date_to_check.month
-
-    # Find the last day of the month
+def isLastWeekday(date_to_check, target_weekday):
+    """Generic check: is this the last target_weekday of the month?"""
+    year, month = date_to_check.year, date_to_check.month
     last_day = calendar.monthrange(year, month)[1]
+    last_candidate = date(year, month, last_day)
 
-    # Calculate the date for the last Wednesday of the month
-    #This ins't actually the last Wednesday, can even be called last day.
-    #But this variable will eventually hold the last wednesday's date. Hence calling it so
-    last_wednesday = date(year, month, last_day)
+    while last_candidate.weekday() != target_weekday:
+        last_candidate -= tdel(days=1)
 
-    # Find the weekday index of the last Thursday
-    while last_wednesday.weekday() != calendar.WEDNESDAY:
-        last_wednesday -= tdel(days=1)
+    return date_to_check == last_candidate
 
-    # Check if the given date is the last Thursday
-    return date_to_check == last_wednesday
 
-def isLastThursday(date_to_check):
-    date_to_check = dt.strptime(str(date_to_check), '%Y-%m-%d').date() 
-    # Check if the given date is a Thursday (weekday index 3)
-    if date_to_check.weekday() != calendar.THURSDAY:
-        return False
-
-    # Get the year and month from the given date
-    year = date_to_check.year
-    month = date_to_check.month
-
-    # Find the last day of the month
-    last_day = calendar.monthrange(year, month)[1]
-
-    # Calculate the date for the last Thursday of the month
-    last_thursday = date(year, month, last_day)
-
-    # Find the weekday index of the last Thursday
-    while last_thursday.weekday() != calendar.THURSDAY:
-        last_thursday -= tdel(days=1)
-
-    # Check if the given date is the last Thursday
-    return date_to_check == last_thursday
+def getExpPrefNifty(inDate):
+    """
+    Get NIFTY expiry prefix (weekly or monthly).
     
+    - Until 28th Aug 2025 → Thursday expiry
+    - From 2nd Sep 2025 → Tuesday expiry
+    - If weekly expiry falls on holiday → roll back
+    - Monthly expiry always last expiry-day of the month (holiday or not)
+    """
+    inDate = dt.strptime(str(inDate), '%Y-%m-%d').date()  
+
+    if str(inDate.year) not in yearsinMainHolidayList:
+        print(f"getExpiryPrefix : Given date {inDate} doesn't seem to be covered by {holsFilePath}\nYears in the holiday List - {yearsinMainHolidayList}")
+        return None
+
+    last_thursday_expiry = date(2025, 8, 28)   # last Thursday expiry
+    
+    #Everything After last_thursday_expiry is a Tuesday Expiry
+    if inDate <= last_thursday_expiry:
+        # Thursday expiry regime
+        this_expiry_day = inDate + relativedelta(weekday=TH(0))
+        expiry_weekday = calendar.THURSDAY
+    else:
+        # Tuesday expiry regime
+        this_expiry_day = inDate + relativedelta(weekday=calendar.TUESDAY)
+        expiry_weekday = calendar.TUESDAY
+
+    # Monthly expiry check → last expiry weekday of the month
+    if isLastWeekday(this_expiry_day, expiry_weekday):
+        return f'NIFTY{monthExp(this_expiry_day)}'
+    else:
+        expDay = this_expiry_day
+        # For weekly expiry, roll back if holiday
+        while str(expDay) in holidays:
+            expDay -= tdel(days=1)
+        return f'NIFTY{normExp(expDay)}'
+
+
+
 def isPenUltimateThursday(date_to_check):
     date_to_check = dt.strptime(str(date_to_check), '%Y-%m-%d').date() 
     # Check if the given date is a Thursday (weekday index 3)
@@ -112,24 +121,6 @@ def isPenUltimateThursday(date_to_check):
     # Check if the given date is the last Thursday or the penultimate Thursday
     return (date_to_check == last_thursday) or (date_to_check == penultimate_thursday)
 
-def getExpPrefNifty(inDate):
-    inDate = dt.strptime(str(inDate), '%Y-%m-%d').date()  
-    if str(inDate.year) in yearsinMainHolidayList:
-        thisThursday = inDate + relativedelta(weekday=TH(0))
-        #Is this Thursday the last thursday of the month?
-        #If yes, its a monthly expiry
-        if isLastThursday(thisThursday):
-            #Doesn't matter if thursday is a holiday. Its going to be a monthly expiry anyway
-            return f'NIFTY{monthExp(thisThursday)}' 
-        else: 
-            expDay = thisThursday
-            #if date is a holiday, keep decrementing till a trading day is found
-            while str(expDay) in holidays:
-                expDay = expDay - tdel(days=1)
-            return f'NIFTY{normExp(expDay)}'
-    else:
-        print(f"getExpiryPrefix : Given date {inDate} doesn't seem to be covered by {holsFilePath}\nYears in the holiday List - {yearsinMainHolidayList}")
-
 
 #the good old days before September 4, 2023 When all expiries were Thursday
 def getExpPrefBankNiftyThursday(inDate):
@@ -137,7 +128,7 @@ def getExpPrefBankNiftyThursday(inDate):
     thisThursday = inDate + relativedelta(weekday=TH(0))
     #Is this Thursday the last thursday of the month?
     #If yes, its a monthly expiry
-    if isLastThursday(thisThursday):
+    if isLastWeekday(thisThursday, calendar.THURSDAY):
         #Doesn't matter if thursday is a holiday. Its going to be a monthly expiry anyway
         return f'BANKNIFTY{monthExp(thisThursday)}' 
     else: 
@@ -155,7 +146,7 @@ def getExpPrefBankNiftyWierdo(inDate):
     #Or is today the penultimate Thursday of the month
     #Remember Remember, the 2nd of September 2023
     #If yes, its a monthly expiry
-    if isLastThursday(thisThursday) or isPenUltimateThursday(inDate):
+    if isLastWeekday(thisThursday, calendar.THURSDAY) or isPenUltimateThursday(inDate):
         #Doesn't matter if thursday is a holiday. Its going to be a monthly expiry anyway
         return f'BANKNIFTY{monthExp(thisThursday)}'
     else:
@@ -172,7 +163,7 @@ def getExpPrefBankNiftyWednesday(inDate):
     thisWednesday = inDate + relativedelta(weekday=WE(0))
     #Is this Thursday the last thursday of the month?
     #If yes, its a monthly expiry
-    if isLastWednesday(thisWednesday):
+    if isLastWeekday(thisWednesday, calendar.WEDNESDAY):
         #Doesn't matter if wednesday is a holiday. 
         #Its going to be a monthly expiry anyway. Instrument name won't change
         return f'BANKNIFTY{monthExp(thisWednesday)}' 
