@@ -11,11 +11,14 @@ Dumps the tables from the 'Daily' databases to a backup database.
 
 Checks and reports if any of the tables in lookupTables_Nifty500.csv are empty at the end of the day.
     This indicates that the corresponding symbol has potentially changed or has been delisted
-Creates main databases {nifty500DBName}, {niftyOptionsDBName} and {bankNiftyOptionsDBName} . (No _daily suffix)
+Creates main databases {nifty500DBName}, {niftyOptionsDBName}, {bankNiftyOptionsDBName} and {sensexOptionsDBName}. (No _daily suffix)
 Copies all tables from the _daily databases to their corresponding main database and drops the tables in the _daily DBs
 Reports about backup failures.
 End of DAS_main
 Returns True if success. Else False.
+
+ChangeLog - 2026-05-19:
+    - Adding Sensex Futures and Options
 """
 
 from datetime import datetime as dt, date
@@ -47,6 +50,7 @@ mysqlPort = dasConfig['mysqlPort']
 nifty500DBName = dasConfig['nifty500DBName']
 niftyOptionsDBName = dasConfig['niftyOptionsDBName']
 bankNiftyOptionsDBName = dasConfig['bankNiftyOptionsDBName']
+sensexOptionsDBName = dasConfig['sensexOptionsDBName']
 
 backupWorkerCount = min(dasConfig['backupWorkerCount'],cpu_count())
 #Using excess number of threads fails in some CPU archs, skipping the multithreaded job completely.
@@ -76,14 +80,25 @@ niftyOptionsTokenTableDict = np.load(path.join(lookupDir,'niftyOptionsTokenTable
 bankNiftyOptionTokens = pd.read_csv(path.join(lookupDir,'bankNiftyOptionsTokenList.csv'))['instrument_token'].values.tolist()
 bankNiftyOptionsTokenTableDict = np.load(path.join(lookupDir,'bankNiftyOptionsTokenTableDict.npy'),allow_pickle=True).item() 
 
-#Combine all token lists
-fullTokenList = indexTokens+nifty500Tokens+niftyOptionTokens+bankNiftyOptionTokens
+#Sensex Options Tokens and Token Table(Lookup => instrument_token:TableName)
+sensexOptionTokens = pd.read_csv(path.join(lookupDir,'sensexOptionsTokenList.csv'))['instrument_token'].values.tolist()
+sensexOptionsTokenTableDict = np.load(path.join(lookupDir,'sensexOptionsTokenTableDict.npy'),allow_pickle=True).item() 
 
-#Combine all three token:table dictionairies
+#Combine all token lists
+fullTokenList = set(
+    indexTokens +
+    nifty500Tokens +
+    niftyOptionTokens +
+    bankNiftyOptionTokens +
+    sensexOptionTokens
+)
+
+#Combine all four token:table dictionairies
 mainTokenTableDict = {}
 mainTokenTableDict.update(nifty500TokenTableDict)
 mainTokenTableDict.update(niftyOptionsTokenTableDict)
 mainTokenTableDict.update(bankNiftyOptionsTokenTableDict)
+mainTokenTableDict.update(sensexOptionsTokenTableDict)
 
 
 #Combine all three token:symbol dictionairies
@@ -91,11 +106,13 @@ mainTokenSymbolDict = {}
 mainTokenSymbolDict.update(nifty500TokenSymbolDict)
 mainTokenSymbolDict.update(niftyOptionsTokenTableDict) #Symbol and tableName are same for nifty options
 mainTokenSymbolDict.update(bankNiftyOptionsTokenTableDict) #Symbol and tableName are same for BankNifty options 
+mainTokenSymbolDict.update(sensexOptionsTokenTableDict) #Symbol and tableName are same for Sensex options
 
 #Creating a lookup dictionairy for instrument_token:DBName
 tokenToDbNameDict = {token: nifty500DBName for token in nifty500Tokens}
 tokenToDbNameDict.update({token: niftyOptionsDBName for token in niftyOptionTokens})
 tokenToDbNameDict.update({token: bankNiftyOptionsDBName for token in bankNiftyOptionTokens})  
+tokenToDbNameDict.update({token: sensexOptionsDBName for token in sensexOptionTokens}) 
 
 def dailyBackupLogger(txt):
     print(dt.now(),txt)
@@ -115,6 +132,35 @@ def dailyBackupLogNoPrint(txt):
     logMsg = '\n'+str(dt.now())+'    ' + str(txt)
     with open(logFile,'a') as f:
         f.write(logMsg)        
+        
+def unsubscribedTokenCsvLogger(instToken):
+    logDirectory = path.join('Logs', str(date.today()) + '_DAS_Logs')
+    if not path.exists(logDirectory):
+        makedirs(logDirectory)
+
+    logFile = path.join(
+        logDirectory,
+        f'DAS_unsubscribedInstrumentTokens_{str(date.today())}.csv'
+    )
+
+    fileExists = path.exists(logFile)
+
+    with open(logFile, 'a') as f:
+        if not fileExists:
+            f.write('instrument_token\n')
+        f.write(f'{instToken}\n')
+        
+def dedupeUnsubscribedTokenCsv():
+    logDirectory = path.join('Logs', str(date.today()) + '_DAS_Logs')
+    logFile = path.join(
+        logDirectory,
+        f'DAS_unsubscribedInstrumentTokens_{str(date.today())}.csv'
+    )
+
+    if path.exists(logFile):
+        unsubscribedTokensDF = pd.read_csv(logFile)
+        unsubscribedTokensDF = unsubscribedTokensDF.drop_duplicates(subset=['instrument_token'])
+        unsubscribedTokensDF.to_csv(logFile, index=False)
     
 def findSymbolsForTable(tableName,symbolTableDF):
     # Filter the DataFrame where 'TableName' matches tbName and select the 'Symbol' column
@@ -230,9 +276,10 @@ def DAS_backupOneInstrument(instToken):
             c3.close()
             conn3.close()
     else:
-        msg = f'Found data for unsbscribed instrument_token {instToken}'
+        msg = f'Found data for unsubscribed instrument_token {instToken}'
+        unsubscribedTokenCsvLogger(instToken)
         dailyBackupLogger(msg)
-        DAS_errorLogger('DAS_dailyBackup - '+msg)
+        DAS_errorLogger('DAS_dailyBackup - ' + msg)
 
 def DAS_dailyBackup():
     try:
@@ -255,8 +302,8 @@ def DAS_dailyBackup():
         #Find unique databaseNames.
         #This is to allow backups irrespective of whether 
         #the same name or different names have been used for the three databases
-        dbNames = [nifty500DBName,niftyOptionsDBName,bankNiftyOptionsDBName]
-        #Sorted unique list
+        dbNames = [nifty500DBName,niftyOptionsDBName,bankNiftyOptionsDBName,sensexOptionsDBName]
+        #Sorted unique list in case DAS config has same names for multiple destination DBs
         dbNames = sorted(list(set(dbNames)))
         conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
         c = conn.cursor()
@@ -283,21 +330,25 @@ def DAS_dailyBackup():
         #I tried collecting just failed tables. 
         #But if DAS_backupOneInstrument failed or was skipped for some reason, resulting in a false negative of no failed tables
         #Using DB, as backup is multi-threaded and variable sharing between threads is cumbersome
+        
+        c.execute(f"DROP TABLE IF EXISTS {nifty500DBName}.backupsuccesstables")
+        
         c.execute(f'''
-                  CREATE TABLE IF NOT EXISTS 
+                  CREATE TABLE 
                   {nifty500DBName}.backupsuccesstables 
                   (insertid INT AUTO_INCREMENT PRIMARY KEY,
                    instrument_token BIGINT(20),
                    tradingsymbol VARCHAR(100),
                    tablename VARCHAR(100)
                    )                  
-                  ''')       
+                  ''')     
         
         #Calling DAS_backupOneInstrument for instrumentTokensToStore
         msg = f'Calling DAS_backupOneInstrument for {len(instrumentTokensToStore)} instrument tokens with {backupWorkerCount} concurrent workers'
         dailyBackupLogger(msg)
         with concurrent.futures.ProcessPoolExecutor(max_workers=backupWorkerCount) as executor:
-            executor.map(DAS_backupOneInstrument, instrumentTokensToStore)
+            list(executor.map(DAS_backupOneInstrument, instrumentTokensToStore))
+        dedupeUnsubscribedTokenCsv()
         
         msg = 'DAS_backupOneInstrument completed. Looking for failed backups'
         dailyBackupLogger(msg)

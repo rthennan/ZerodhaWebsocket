@@ -1,16 +1,16 @@
 ## Telegram Group for questions / code releases - [Zerodha_Websocket_DAS](https://t.me/zerodhaWebSocket) 
 
-# Zerodha Websocket for Nifty500, Nifty Options and BankNifty Options
+# Zerodha Websocket for Nifty 500, Nifty, BankNifty and Sensex Futures and Options
 Acquire and store tick data for NSE (India) stocks, Index Futures and Index Options from Zerodha.  
 
 **Highlights:**
  - Automates the entire pipeline including daily login for Zerodha API app.
- - Dynamically gets the latest Nifty 500 list and weekly options for current and next week for Nifty and Bank Nifty
+ - Dynamically gets the latest Nifty 500 list and options for current and next expiry for Nifty, BankNifty and Sensex
  - The Nifty 500 list is maintained and **appended** locally.  
    - When the Nifty 500 list is updated by NSE, only additions are updated in the local list. If a stock is removed from Nifty 500, the code still retains it and tries subscribing to it.
    - This also allows you to add additional instruments that may or may not be part of the Nifty 500 to the lookup list.
 - Checks for trading holidays every day and shuts down if it is an NSE trading holiday.
-- The only maintenance required is to ensure there is adequate storage available for the database. **With Nifty 500 and weekly options for two expiries for Nifty and BankNifty, the DB grows by around 6GB per day.**
+- The only maintenance required is to ensure there is adequate storage available for the database. **With Nifty 500 and options for two expiries for Nifty, BankNifty and Sensex, the DB grows by around 8GB per day.**
 
 **DAS** - Data Acquisition System. That is what I am calling it.
 
@@ -36,9 +36,7 @@ Acquire and store tick data for NSE (India) stocks, Index Futures and Index Opti
    - **tradeHolCheck_shutDown.py** - Shut the machine down if today is a trading Holiday
    - **getExpiryPrefix** - Generate the prefix for Nifty and BankNifty Option instruments. Useful in backtests.
 ### **[8. Automation I use outside the provided code](#automation-i-use-outside-the-provided-code)**
-### **[9. Changelog](#changelog)**
-   - **[2024-03-27](#2024-03-27)**
-   - **[2024-04-11](#2024-04-11)**   
+### **[9. Changelog](#changelog)** 
 ### **[10. Performance Tweaks](#performance-tweaks)** 
 ### **[11. Raise Issues](#raise-issues)**     
 
@@ -116,13 +114,13 @@ Update the rest as required.
   -   Update this if your DB Server runs in a port other than the default 3306.
   -   If you aren't sure what this means, the server is likely running in the default port. Don't change this.
   -   Default value - 3306 - **Valid**
-- `accessTokenDBName`, `nifty500DBName`, `niftyOptionsDBName` and `bankNiftyOptionsDBName` :
+- `accessTokenDBName`, `nifty500DBName`, `niftyOptionsDBName`, `bankNiftyOptionsDBName` and `sensexOptionsDBName`:
   -   Names used for DBs that will be created for storing the access tokens and tick data
   -   Live tick data will first be stored in a table called `dailytable` in `nifty500DBName`.
   -   You can store all the tables in the same database, as there are no conflicts in the Table Names.
-      -   i.e., you can use the same DB Name value for all four fields, and the code will run without issues.
+      -   i.e., you can use the same DB Name value for all four tick-data DB fields, and the code will run without issues.
       -   I prefer differentiating these databases for various purposes.
-  -   Default values - `zerodha_tokens` , `aws_das_nse`, `aws_das_niftyopt` and `aws_das_bankopt` - **Valid**
+  -   Default values - `zerodha_tokens` , `aws_das_nse`, `aws_das_niftyopt`, `aws_das_bankopt` and `aws_das_sensexopt` - **Valid**
 - `marketCloseHour` and `marketCloseMinute`:
   -   Determines when the ticker will be stopped.
   -   Used by DAS_main.py. It will proceed to the backup operations after the specified time.
@@ -140,7 +138,7 @@ Update the rest as required.
   - The lookupTables directory **WILL NOT** be downloaded as it is included in .gitignore. This is to ensure you do not accidentally overwrite any customization when you pull changes from the Repo
   - If you want to add instruments to the lookup, run `python lookupTablesCreator.py` after updating dasConfig.json to let the script create the file.
   - lookupTables > lookupTables_Nifty500.csv is the only persistent list that will automatically be updated (only additions) without removing older instruments.
-  - If you wish to subscribe to additional instruments other than Nifty500, Nifty and BankNifty Options, add them to lookupTables_Nifty500.csv
+  - If you wish to subscribe to additional instruments other than Nifty500, Nifty, BankNifty and Sensex Options, add them to lookupTables_Nifty500.csv
   - Use the existing Symbols and TableNames in the file as a reference.
   - The symbols have to be valid for Zerodha. Use the [Zerodha Instrument Dump](https://api.kite.trade/instruments) to validate
   - Ensure the TableName has no blank spaces or special characters other than `_` (underscore).
@@ -148,8 +146,8 @@ Update the rest as required.
   - If you haven't provided this file when DAS_main.py is run, nifty500Updater.py as a part of it will create lookupTables_Nifty500.csv
      -  The auto-generated file will contain
         -  Nifty 500 instruments on that day
-        -  NIFTY 50 and NIFTY BANK indexes
-        -  NIFTY and BANKNIFTY Futures for the current month
+        -  NIFTY 50, NIFTY BANK and Sensex indexes
+        -  NIFTY, BANKNIFTY and SENSEX Futures for the current month
 #### 4. `pip install -r requirements.txt`
 
 ### To Execute:
@@ -182,12 +180,12 @@ Update the rest as required.
        - Gets the latest Nifty 500 list from the NSE site.
        - If local-file lookupTables> lookupTables_Nifty500.csv exists:
          - Updates it with new symbols
-         - Update NIFTY and BANKNIFTY Futures for the current month if necessary
+         - Update NIFTY, BANKNIFTY and SENSEX Futures for the current month if necessary
        - Else:
-         - Creates a new file wit
+         - Creates a new file with
           -  Nifty 500 instruments on that day
-          -  NIFTY 50 and NIFTY BANK indexes
-          -  NIFTY and BANKNIFTY Futures for the current month
+          -  NIFTY 50, NIFTY BANK and SENSEX indexes
+          -  NIFTY, BANKNIFTY and SENSEX Futures for the current month
        - All symbol additions will be logged in nifty500_SymbolsChanged.log in the current directory
        - Returns True if success. Else False.
        - Can be Run standalone
@@ -205,25 +203,28 @@ Update the rest as required.
         - 4.3 lookupTablesCreatorBankOptions
             - Same for BankNifty Options
             - Save instrument_token list bankNiftyOptionsTokenList.csv
-            - instrument_token:TableName dictionary bankNiftyOptionsTokenTableDict.npy   
-        - 4.4 Create DB `{nifty500DBName}` and dailytable            
+            - instrument_token:TableName dictionary bankNiftyOptionsTokenTableDict.npy  
+        - 4.4 lookupTablesCreatorSensexOptions
+            - Same for Sensex Options
+            - Save instrument_token list sensexOptionsTokenList.csv
+            - instrument_token:TableName dictionary sensexOptionsTokenTableDict.npy   
+        - 4.5 Create DB `{nifty500DBName}` and dailytable            
         - Returns True if success. Else False.
   5. DAS_Ticker.py
        - Will only proceed if all the previous steps returned True. tradeHolidayCheck should have returned False.
        - Accepts marketCloseHour and marketCloseMinute
        - Starts a countdown timer for self-destruction.
        - Logs into Kite with the latest access token found in {accessTokenDBName}.kite1tokens
-       - Gets instrument_tokens from nifty500TokenList.csv, indexTokenList.csv, niftyOptionsTokenList.csv and bankNiftyOptionsTokenList.csv in the lookupTables directory.
+       - Gets instrument_tokens from nifty500TokenList.csv, indexTokenList.csv, niftyOptionsTokenList.csv, bankNiftyOptionsTokenList.csv and sensexOptionsTokenList.csv in the lookupTables directory.
        - Subscribes to all of them in FULL mode
        - Receives ticks from Zerodha Websocket.
        - Adds tradingsymbol, tablename and databasename to the ticks and stores them into `{nifty500DBName}`.dailytable.
-       - Roughly based on the last suggestion in this discussion - [Delay is websocket streaming
-](https://kite.trade/forum/discussion/1674/delay-is-websocket-streaming). I haven't implemented the queue/multi-threaded approach for DB store as I use `REPLACE INTO` to maintain unique timestamps and combining this with multithreading results in deadlocks.
+       - Roughly based on the last suggestion in this discussion - [Delay is websocket streaming](https://kite.trade/forum/discussion/1674/delay-is-websocket-streaming). I haven't implemented the queue/multi-threaded approach for DB store as I use `REPLACE INTO` to maintain unique timestamps and combining this with multithreading results in deadlocks.
        - See changelog **[2024-04-11](#2024-04-11)** for query examples for dailytable
   7. DAS_dailyBackup.py
        - Checks and reports if any of the tokens in lookupTables_Nifty500.csv did not receive any ticks by the end of the day.
            - This indicates that the corresponding symbol has potentially changed or has been delisted
-       - Creates main databases {nifty500DBName}, {niftyOptionsDBName} and {bankNiftyOptionsDBName}.
+       - Creates main databases {nifty500DBName}, {niftyOptionsDBName}, {bankNiftyOptionsDBName} and {sensexOptionsDBName}.
        - Creates individual tables for all the instrument_tokens in the daily table.
        - Splits and store ticks from the daily table into the individual tables
        - Reports about backup failures.
@@ -309,6 +310,9 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
 
 ### Changelog:
 
+  #### <ins>**2026-05-19**</ins>:
+  - Include Sensex Index, Future and Options (Current and Next expiry)
+  
   #### <ins>**2025-08-07**</ins>:
   - nifty500Updater => getCurrentFuture for Nifty and BankNifty were previously checking LastThursday and Lastwednesday.
   - Fixed them to rely purely on the Zerodha instrument dump, dynamically finding the active Future for today
@@ -317,8 +321,6 @@ Though I have automated parts of this process (dump in AWS, SCP from Local, impo
   - Updates to lookupTablesCreator.py
     - getNiftyExpiry and getBankNiftyExpiry accept 'offsetExpiry' and returns this or next expiry.
         - agnostic of weekly or monthly or fortnightly or whatever the puck SEBI decided to do
-
-
   #### <ins>**2024-04-11**</ins>:
   - DAS_Ticker - Live tick data is now stored into one table for all ticks. This was to reduce the DB and disk overhead(IOPS) from looping through each tick and storing it in the respective table.
   - The loop and store approach required 1000+ IOPS. This has  been brought down to ~500 IOPS

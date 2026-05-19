@@ -3,9 +3,9 @@ Author: Rajesh Thennan
 Source: https://github.com/rthennan/ZerodhaWebsocket
 
 Logs in to Kite with the latest access token found in {accessTokenDBName}.kite1tokens
-Gets instrument_tokens from nifty500TokenList.csv, indexTokenList.csv, niftyOptionsTokenList.csv and bankNiftyOptionsTokenList.csv in the lookupTables directory.
+Gets instrument_tokens from nifty500TokenList.csv, indexTokenList.csv, niftyOptionsTokenList.csv, bankNiftyOptionsTokenList.csv and sensexOptionsTokenList.csv in the lookupTables directory.
 Subscribes to all of them in FULL mode
-Uses nifty500TokenTable.npy, niftyOptionsTokenTable.npy and bankNiftyOptionsTokenTable.npy to identify the tables to which the tick data should be stored
+Uses nifty500TokenTable.npy, niftyOptionsTokenTable.npy, bankNiftyOptionsTokenTable.npy and sensexOptionsTokenTableDict.npy to identify the tables to which the tick data should be stored
 Uses different SQL statements for Indexes and the rest of the instruments as Index ticks have fewer columns.
 
 kiteConnect ticker field name changes in v4 and later.
@@ -20,6 +20,10 @@ Old Name => New Name:
     volume => volume_traded
     buy_quantity => total_buy_quantity
     sell_quantity => total_sell_quantity
+    
+
+ChangeLog - 2026-05-19:
+    - Adding Sensex Futures and Options
 """
 
 import pandas as pd
@@ -52,6 +56,7 @@ dailyTableName = 'dailytable'
 nifty500DBName = dasConfig['nifty500DBName']
 niftyOptionsDBName = dasConfig['niftyOptionsDBName']
 bankNiftyOptionsDBName = dasConfig['bankNiftyOptionsDBName']
+sensexOptionsDBName = dasConfig['sensexOptionsDBName']
 
 
 conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
@@ -161,10 +166,10 @@ def DAS_Ticker(shutdown_hour, shutdown_minute):
     #indexTokens = pd.read_csv(path.join(lookupDir,'indexTokenList.csv'))['instrument_token'].values.tolist()  
    
     #Nifty500 Tokens and Token Table (Lookup => instrument_token:TableName)
-    #Includes Nifty 500, Nifty, BankNifty and their Futures
+    #Includes Nifty 500, Nifty, BankNifty, Sensex and their Futures
     nifty500Tokens = pd.read_csv(path.join(lookupDir,'nifty500TokenList.csv'))['instrument_token'].values.tolist()
-    nifty500TokenTable = np.load(path.join(lookupDir,'nifty500TokenTableDict.npy'),allow_pickle=True).item() 
-    nifty500TokenSymbol = np.load(path.join(lookupDir,'nifty500TokenSymbolDict.npy'),allow_pickle=True).item() 
+    nifty500TokenTableDict = np.load(path.join(lookupDir,'nifty500TokenTableDict.npy'),allow_pickle=True).item() 
+    nifty500TokenSymbolDict = np.load(path.join(lookupDir,'nifty500TokenSymbolDict.npy'),allow_pickle=True).item() 
     
     #Nifty Options Tokens and Token Table(Lookup => instrument_token:TableName)
     niftyOptionTokens = pd.read_csv(path.join(lookupDir,'niftyOptionsTokenList.csv'))['instrument_token'].values.tolist()
@@ -172,10 +177,14 @@ def DAS_Ticker(shutdown_hour, shutdown_minute):
     
     #BankNifty Options Tokens and Token Table(Lookup => instrument_token:TableName)
     bankNiftyOptionTokens = pd.read_csv(path.join(lookupDir,'bankNiftyOptionsTokenList.csv'))['instrument_token'].values.tolist()
-    bankNiftyOptionsTokenTable = np.load(path.join(lookupDir,'bankNiftyOptionsTokenTableDict.npy'),allow_pickle=True).item() 
+    bankNiftyOptionsTokenTableDict = np.load(path.join(lookupDir,'bankNiftyOptionsTokenTableDict.npy'),allow_pickle=True).item() 
     
-    #Combining all three token lists. Subscribing to this master list
-    fullTokenList = nifty500Tokens + niftyOptionTokens + bankNiftyOptionTokens
+    #Sensex Options Tokens and Token Table(Lookup => instrument_token:TableName)
+    sensexOptionTokens = pd.read_csv(path.join(lookupDir,'sensexOptionsTokenList.csv'))['instrument_token'].values.tolist()
+    sensexOptionsTokenTableDict = np.load(path.join(lookupDir,'sensexOptionsTokenTableDict.npy'),allow_pickle=True).item() 
+    
+    #Combining all four token lists. Subscribing to this master list
+    fullTokenList = nifty500Tokens + niftyOptionTokens + bankNiftyOptionTokens + sensexOptionTokens
     #Removing indexTokens for testing
     #fullTokenList = [token for token in fullTokenList if token not in indexTokens]
 
@@ -185,22 +194,25 @@ def DAS_Ticker(shutdown_hour, shutdown_minute):
     #fullTokenList = [345089,11829506]+indexTokens
     #fullTokenList = indexTokens
     
-    #Combine all three token:table dictionairies
+    #Combine all four token:table dictionairies
     mainTokenTableDict = {}
-    mainTokenTableDict.update(nifty500TokenTable)
+    mainTokenTableDict.update(nifty500TokenTableDict)
     mainTokenTableDict.update(niftyOptionsTokenTable)
-    mainTokenTableDict.update(bankNiftyOptionsTokenTable)
+    mainTokenTableDict.update(bankNiftyOptionsTokenTableDict)
+    mainTokenTableDict.update(sensexOptionsTokenTableDict)
     
-    #Combine all three token:symbol dictionairies
+    #Combine all four token:symbol dictionairies
     mainTokenSymbolDict = {}
-    mainTokenSymbolDict.update(nifty500TokenSymbol)
+    mainTokenSymbolDict.update(nifty500TokenSymbolDict)
     mainTokenSymbolDict.update(niftyOptionsTokenTable) #Symbol and tableName are same for nifty options
-    mainTokenSymbolDict.update(bankNiftyOptionsTokenTable) #Symbol and tableName are same for BankNifty options 
+    mainTokenSymbolDict.update(bankNiftyOptionsTokenTableDict) #Symbol and tableName are same for BankNifty options
+    mainTokenSymbolDict.update(sensexOptionsTokenTableDict) #Symbol and tableName are same for Sensex options
     
     #Creating a lookup dictionairy for instrument_token:DBName
     tokenToDbNameDict = {token: nifty500DBName for token in nifty500Tokens}
     tokenToDbNameDict.update({token: niftyOptionsDBName for token in niftyOptionTokens})
     tokenToDbNameDict.update({token: bankNiftyOptionsDBName for token in bankNiftyOptionTokens})   
+    tokenToDbNameDict.update({token: sensexOptionsDBName for token in sensexOptionTokens})   
     
     def bulkReplace(ticks):
         global engine

@@ -44,6 +44,9 @@ Check _InstrumentsSubscribed.log to see the list of symbols subscribed to
     - getNiftyExpiry accepts 'offsetExpiry' and returns this or next expiry.
         - agnostic of weekly or monthly or fortnightly or whatever the puck SEBI decided to do
     - Similarly, getBankNiftyExpiry accepts 'offsetExpiry'
+
+ChangeLog - 2026-05-19:
+    - Adding Sensex Futures and Options
     
 
 """
@@ -159,9 +162,9 @@ def getNiftyExpiry(offsetExpiry): #offsetExpiry=0 => this expiry. offsetExpiry=1
     niftyOptions = niftyOptions[niftyOptions['name'].isin(['NIFTY'])]
     #Filtering just CE as we interested only in the expiry dates now and not the actual instruments
     niftyOptions = niftyOptions[niftyOptions['instrument_type'].isin(['CE'])]
-    niftyExpiyDates = sorted(list(niftyOptions['expiry'].unique()))
+    niftyExpiryDates = sorted(list(niftyOptions['expiry'].unique()))
 
-    return str(niftyExpiyDates[offsetExpiry])  
+    return str(niftyExpiryDates[offsetExpiry])  
 
 def getBankNiftyExpiry(offsetExpiry): #offsetExpiry=0 => this expiry. offsetExpiry=1 => next expiry
     #Uses global variable zerodhaInstrumentsDump
@@ -171,8 +174,19 @@ def getBankNiftyExpiry(offsetExpiry): #offsetExpiry=0 => this expiry. offsetExpi
     bankNiftyOptions = bankNiftyOptions[bankNiftyOptions['name'].isin(['BANKNIFTY'])]
     #Filtering just CE as we interested only in the expiry dates now and not the actual instruments
     bankNiftyOptions = bankNiftyOptions[bankNiftyOptions['instrument_type'].isin(['CE'])]
-    bankNiftyExpiyDates = sorted(list(bankNiftyOptions['expiry'].unique()))
-    return str(bankNiftyExpiyDates[offsetExpiry])  
+    bankNiftyExpiryDates = sorted(list(bankNiftyOptions['expiry'].unique()))
+    return str(bankNiftyExpiryDates[offsetExpiry])  
+
+def getSensexExpiry(offsetExpiry): #offsetExpiry=0 => this expiry. offsetExpiry=1 => next expiry
+    #Uses global variable zerodhaInstrumentsDump
+    #Filtering Nifty Options from zerodhaInstrumentsDump
+    zerodhaInstrumentsDump = getZerodhaInstDump()
+    sensexOptions = zerodhaInstrumentsDump[zerodhaInstrumentsDump['segment'].isin(['BFO-OPT'])]
+    sensexOptions = sensexOptions[sensexOptions['name'].isin(['SENSEX'])]
+    #Filtering just CE as we interested only in the expiry dates now and not the actual instruments
+    sensexOptions = sensexOptions[sensexOptions['instrument_type'].isin(['CE'])]
+    sensexExpiryDates = sorted(list(sensexOptions['expiry'].unique()))
+    return str(sensexExpiryDates[offsetExpiry])  
 
 def lookupTablesCreatorNifty500():
     try:
@@ -195,12 +209,30 @@ def lookupTablesCreatorNifty500():
         
         ## retaining instrument_token and tradingsymbol only in the instrument dump
         nifty500Instruments = zerodhaInstrumentsDump[zerodhaInstrumentsDump['tradingsymbol'].isin(n500InstrumentSymbols)]
+
         #Filtering further.
         #'exchange'.isin(['NSE','NFO']
         #'instrument_type'.isin(['EQ','FUT']
-        nifty500Instruments = nifty500Instruments[nifty500Instruments['exchange'].isin(['NSE','NFO'])]
-        nifty500Instruments = nifty500Instruments[nifty500Instruments['instrument_type'].isin(['EQ','FUT'])]
-        
+        # isin(['BFO-FUT', 'INDICES'] to retain sensex future and index
+# =============================================================================
+#         nifty500Instruments = nifty500Instruments[
+#             (
+#                 (nifty500Instruments['exchange'].isin(['NSE', 'NFO'])) &
+#                 (nifty500Instruments['instrument_type'].isin(['EQ', 'FUT']))
+#             ) |
+#             (
+#                 nifty500Instruments['segment'].isin(['BFO-FUT', 'INDICES'])
+#             )
+#         ]
+# =============================================================================
+        #alternatively, just removing BSE listings for N500. This retains Index and Futures for Nifty, BankNifty and Sensex
+        nifty500Instruments = nifty500Instruments[
+            ~(
+                (nifty500Instruments['segment'] == 'BSE') &
+                (nifty500Instruments['exchange'] == 'BSE')
+            )
+        ]
+
         ##Retaining instrument_token and tradingsymbol only from the instrument dump 
         nifty500Instruments = nifty500Instruments[['instrument_token','tradingsymbol']]
         nifty500Instruments = nifty500Instruments.drop_duplicates()
@@ -236,7 +268,7 @@ def lookupTablesCreatorNifty500():
         #They have just two columns in the feed - timestamp and price.
         #Don't have to be removed from the main list.
         #just a list to check and create different table structure at EoD
-        indexInstruments = nifty500Instruments.loc[nifty500Instruments['TableName'].isin(['NIFTY', 'BANKNIFTY'])]
+        indexInstruments = nifty500Instruments.loc[nifty500Instruments['TableName'].isin(['NIFTY', 'BANKNIFTY','SENSEX'])]
         indexInstruments.drop('TableName',axis=1).to_csv(path.join(lookupDirectory,'indexTokenList.csv'),index=False)	
         msg = 'Saved indexTokenList.csv to differentiate Indexes Nifty and BankNifty from the other instruments for SQL store'
         lookupTableCreatorLogger(msg)
@@ -282,8 +314,10 @@ def lookupTablesCreatorNiftyOptions():
             zerodhaInstrumentsDump = getZerodhaInstDump()
             
             #Filtering Nifty Options from zerodhaInstrumentsDump
-            niftyOptionsDF = zerodhaInstrumentsDump[zerodhaInstrumentsDump['segment'].isin(['NFO-OPT'])]
-            niftyOptionsDF = niftyOptionsDF[niftyOptionsDF['name'].isin(['NIFTY'])]
+            niftyOptionsDF = zerodhaInstrumentsDump[
+                (zerodhaInstrumentsDump['segment'] == 'NFO-OPT') &
+                (zerodhaInstrumentsDump['name'] == 'NIFTY')
+            ]
             
             #Retain this and Next Expiry only
             niftyOptionsDF = niftyOptionsDF[niftyOptionsDF['expiry'].isin([niftyThisExpiry,niftyNextExpiry])]
@@ -329,7 +363,7 @@ def lookupTablesCreatorNiftyOptions():
         =========================================
         '''            
 
-def lookupTablesCreatorBankOptions():
+def lookupTablesCreatorBankNiftyOptions():
         '''        
         =========================================
         Creating Lookup Tables for BankNifty Options - Start
@@ -344,9 +378,11 @@ def lookupTablesCreatorBankOptions():
             #Downloading Zerodha Instrument dump 
             zerodhaInstrumentsDump = getZerodhaInstDump()
             
-            #Filtering Nifty Options from zerodhaInstrumentsDump
-            bankNiftyOptionsDF = zerodhaInstrumentsDump[zerodhaInstrumentsDump['segment'].isin(['NFO-OPT'])]
-            bankNiftyOptionsDF = bankNiftyOptionsDF[bankNiftyOptionsDF['name'].isin(['BANKNIFTY'])]
+            #Filtering BankNifty Options from zerodhaInstrumentsDump
+            bankNiftyOptionsDF = zerodhaInstrumentsDump[
+                (zerodhaInstrumentsDump['segment'] == 'NFO-OPT') &
+                (zerodhaInstrumentsDump['name'] == 'BANKNIFTY')
+            ]
             
             #Retain this and Next Expiry only
             bankNiftyOptionsDF = bankNiftyOptionsDF[bankNiftyOptionsDF['expiry'].isin([bankNiftyThisExpiry,bankNiftyNextExpiry])]
@@ -368,7 +404,7 @@ def lookupTablesCreatorBankOptions():
             lookupTableCreatorLogger(msg)
             
             #Saving BankNiftyOptions instrument_token list to subscribe.
-            #This will also be used to save nifty option ticks to a separate DB
+            #This will also be used to save banknifty option ticks to a separate DB
             bankNiftyOptionsDF.drop('TableName',axis=1).to_csv(path.join(lookupDirectory,'bankNiftyOptionsTokenList.csv'),index=False)	
             msg = f'Subscribing to {len(bankNiftyOptionsDF)} BankNifty Options. Saved bankNiftyOptionsTokenList.csv'
             lookupTableCreatorLogger(msg)
@@ -388,7 +424,73 @@ def lookupTablesCreatorBankOptions():
         =========================================
         Creating Lookup Tables for Bank Nifty Options - End
         =========================================
-        '''          
+        '''  
+
+
+def lookupTablesCreatorSensexOptions():
+        '''        
+        =========================================
+        Creating Lookup Tables for Sensex Options - Start
+        =========================================               
+        '''    
+        msg = 'DAS - Sensex Options Lookup Table Creation Started'
+        lookupTableCreatorLogger(msg)
+        try:        
+            sensexThisExpiry = getSensexExpiry(0) #This Expiry
+            sensexNextExpiry = getSensexExpiry(1) #Next Expiry
+            
+            #Downloading Zerodha Instrument dump 
+            zerodhaInstrumentsDump = getZerodhaInstDump()
+            
+            #Filtering Sensex Options from zerodhaInstrumentsDump
+            sensexOptionsDF = zerodhaInstrumentsDump[
+                (zerodhaInstrumentsDump['segment'] == 'BFO-OPT') &
+                (zerodhaInstrumentsDump['name'] == 'SENSEX')
+            ]
+            
+            #Retain this and Next Expiry only
+            sensexOptionsDF = sensexOptionsDF[sensexOptionsDF['expiry'].isin([sensexThisExpiry,sensexNextExpiry])]
+            
+            ##Retaining instrument_token and tradingsymbol only from the instrument dump 
+            sensexOptionsDF = sensexOptionsDF[['instrument_token','tradingsymbol']]
+            sensexOptionsDF = sensexOptionsDF.drop_duplicates()
+            
+            #Trading Symbol can be used as tableName as Index option symbols do not have special characters or spaces
+            sensexOptionsDF = sensexOptionsDF.rename(columns={'tradingsymbol': 'TableName'})
+            
+            ##Creating a lookup dictionary - Lookup instrument_token, get TableName
+            sensexOptionsTokenTable = sensexOptionsDF.set_index('instrument_token')['TableName'].to_dict()
+
+            #Saving the exchange_token:TableName Dictionary
+            #Same dictionary can be used for instrument_token:Symbol lookup for options
+            np.save(path.join(lookupDirectory,'sensexOptionsTokenTableDict.npy'), sensexOptionsTokenTable)
+            msg = 'Saved sensexOptionsTokenTable exchange_token:TableName Dictionary => sensexOptionsTokenTableDict.npy'
+            lookupTableCreatorLogger(msg)
+            
+            #Saving SensexOptions instrument_token list to subscribe.
+            #This will also be used to save sensex option ticks to a separate DB
+            sensexOptionsDF.drop('TableName',axis=1).to_csv(path.join(lookupDirectory,'sensexOptionsTokenList.csv'),index=False)	
+            msg = f'Subscribing to {len(sensexOptionsDF)} Sensex Options. Saved sensexOptionsTokenList.csv'
+            lookupTableCreatorLogger(msg)
+            insrumentListLogger(msg)
+            # Creating a string from the 'TableName' column where each item is on a new line
+            sensexOptionsNameString = '\n'.join(sensexOptionsDF['TableName'].astype(str))
+            msg = 'Sensex Option Instruments Subscribed :\n'+sensexOptionsNameString
+            insrumentListLogger(msg)
+            return True
+        except Exception as e:
+            msg = f"Instrument Token Lookup Table Creator - Sensex Options - failed with exception {e}. Traceback : {str(traceback.format_exc())}"
+            lookupTableCreatorLogger(msg)
+            DAS_errorLogger('lookupTablesCreator - '+msg)
+            DAS_mailer('DAS Sensex Options Lookup Table Creator Failed',msg)
+            return False   
+        '''
+        =========================================
+        Creating Lookup Tables for Sensex Options - End
+        =========================================
+        '''  
+
+        
 def lookupTablesCreator():    
     if isDasConfigDefault():
         msg = 'DAS Config has defaults. accessTokenReq is exiting'
@@ -399,15 +501,16 @@ def lookupTablesCreator():
     #Hence no Else required here
     n500TablesCreated = lookupTablesCreatorNifty500()
     niftyOptionsTablesCreated = lookupTablesCreatorNiftyOptions()
-    bankOptionsTablesCreated = lookupTablesCreatorBankOptions()
+    bankOptionsTablesCreated = lookupTablesCreatorBankNiftyOptions()
+    sensexOptionsTablesCreated = lookupTablesCreatorSensexOptions()
     
-    if not all([n500TablesCreated, niftyOptionsTablesCreated, bankOptionsTablesCreated]):
+    if not all([n500TablesCreated, niftyOptionsTablesCreated, bankOptionsTablesCreated,sensexOptionsTablesCreated]):
         msg = 'One or more Lookup Table Creation Activities FAILED!!!'
         lookupTableCreatorLogger(msg)  
         DAS_errorLogger('lookupTablesCreator - '+msg)
         return False   
         
-    if n500TablesCreated and niftyOptionsTablesCreated and bankOptionsTablesCreated:
+    if n500TablesCreated and niftyOptionsTablesCreated and bankOptionsTablesCreated and sensexOptionsTablesCreated:
         #Create {nifty500DBName}
         conn = MySQLdb.connect(host = mysqlHost, user = mysqlUser, passwd = mysqlPass, port=mysqlPort)
         c = conn.cursor() 

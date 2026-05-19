@@ -108,7 +108,7 @@ if __name__ == '__main__':
             DAS_Ticker(marketCloseHour,marketCloseMinute)
             msg = 'DAS_Ticker done for the day Successfully. Proceeding to Backup'
             dasMainlogger(msg)
-            #You are here
+            #Reach this point after DAS_Ticker exits at EoD
             backupStatus = DAS_dailyBackup()
             if backupStatus:
                 msg="DAS - All Activities for the day have been completed."

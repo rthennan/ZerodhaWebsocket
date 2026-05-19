@@ -15,6 +15,7 @@
     "nifty500DBName" : "aws_das_nse",
     "niftyOptionsDBName" : "aws_das_niftyopt",
     "bankNiftyOptionsDBName" : "aws_das_bankopt",
+    "sensexOptionsDBName" : "aws_das_sensexopt",
     "marketCloseHour" : 15,
     "marketCloseMinute" : 35,
     "backupWorkerCount" : 4
