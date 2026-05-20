@@ -270,7 +270,7 @@ def lookupTablesCreatorNifty500():
         #just a list to check and create different table structure at EoD
         indexInstruments = nifty500Instruments.loc[nifty500Instruments['TableName'].isin(['NIFTY', 'BANKNIFTY','SENSEX'])]
         indexInstruments.drop('TableName',axis=1).to_csv(path.join(lookupDirectory,'indexTokenList.csv'),index=False)	
-        msg = 'Saved indexTokenList.csv to differentiate Indexes Nifty and BankNifty from the other instruments for SQL store'
+        msg = 'Saved indexTokenList.csv to differentiate Nifty, BankNifty and Sensex Indexes from the other instruments for SQL store as they only have timestamp and price'
         lookupTableCreatorLogger(msg)
         #Saving the main exchange_token list to subscribe later
         nifty500Instruments.drop('TableName',axis=1).to_csv(path.join(lookupDirectory,'nifty500TokenList.csv'),index=False)		

@@ -482,6 +482,29 @@ def upsertFutureSymbol(lookupTable, tableName, currentFuture, label, changesMade
     return lookupTable, changesMade, False
 
 
+def upsertFixedSymbol(lookupTable, symbol, tableName, label, changesMade):
+    tableRows = lookupTable[lookupTable['TableName'] == tableName]
+
+    if tableRows.empty:
+        rowToAdd = pd.DataFrame([
+            {'Symbol': symbol, 'TableName': tableName}
+        ])
+
+        lookupTable = pd.concat([lookupTable, rowToAdd], ignore_index=True)
+        changesMade = f"{changesMade}\n{label} added: {symbol} -> {tableName}"
+
+        return lookupTable, changesMade, True
+
+    symbolInLookup = tableRows['Symbol'].iloc[0]
+
+    if symbolInLookup != symbol:
+        lookupTable.loc[lookupTable['TableName'] == tableName, 'Symbol'] = symbol
+        changesMade = f"{changesMade}\n{label} updated from {symbolInLookup} to {symbol}"
+
+        return lookupTable, changesMade, True
+
+    return lookupTable, changesMade, False
+
 def updateSymbolTableNameList():
     ensureLookUpFilesDir()
 
@@ -489,6 +512,24 @@ def updateSymbolTableNameList():
     changesMade = ''
 
     lookupTable = pd.read_csv(path.join(lookUpFilesDir, currentLookUpFileName))
+    
+    # Ensure NIFTY, BANKNIFTY and SENSEX index rows exist/update correctly
+    indexesToEnsure = [
+        {'Symbol': 'NIFTY 50', 'TableName': 'NIFTY', 'Label': 'Nifty Index'},
+        {'Symbol': 'NIFTY BANK', 'TableName': 'BANKNIFTY', 'Label': 'BankNifty Index'},
+        {'Symbol': 'SENSEX', 'TableName': 'SENSEX', 'Label': 'Sensex Index'}
+    ]
+    
+    for indexRow in indexesToEnsure:
+        lookupTable, changesMade, changed = upsertFixedSymbol(
+            lookupTable=lookupTable,
+            symbol=indexRow['Symbol'],
+            tableName=indexRow['TableName'],
+            label=indexRow['Label'],
+            changesMade=changesMade
+        )
+    
+        lookupTableChanged = lookupTableChanged or changed
 
     # Checking if Nifty 500 list has new symbols
     existingSymbols = lookupTable['Symbol'].tolist()
@@ -514,6 +555,8 @@ def updateSymbolTableNameList():
             changesMade = f"{changesMade}\n{symbolsToAdd['Symbol'].iloc[row]}  {symbolsToAdd['TableName'].iloc[row]}  "
 
         lookupTableChanged = True
+        
+    
 
     # Check if NIFTYFUT, BANKNIFTYFUT and SENSEXFUT have to be inserted/updated
     currentNiftyFut = getCurrentFuture('NIFTY')
